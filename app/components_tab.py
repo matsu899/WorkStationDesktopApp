@@ -1,4 +1,8 @@
 # app/components_tab.py
+# Záložka pro správu komponent v GUI aplikace
+# Umožňuje seznam, přidávání, úpravy a správu obrázků komponent
+# Záložka pro správu komponent v GUI aplikace
+# Umožňuje seznam, přidávání, úpravy a správu obrázků komponent
 
 from typing import List, Dict
 import os
@@ -31,8 +35,9 @@ COMPONENT_IMAGE_SUBDIR = "components"
 
 class ComponentDialog(QDialog):
     """
-    Dialog used both for adding and editing a component.
-    If initial_data is provided, fields are pre-filled.
+    Dialog pro přidávání nebo úpravy komponenty.
+    Pokud je zadán initial_data, pole jsou předvyplniténa.
+    Umožňuje výběr obrázku z systému.
     """
 
     def __init__(self, parent=None, title="Component", initial_data: Dict | None = None):
@@ -108,6 +113,9 @@ class ComponentDialog(QDialog):
 
 
 class ComponentsTab(QWidget):
+    # Záložka pro správu komponent
+    # Zobrazení seznamu všech komponent, přidávání nových a úprava existujících
+    # Správa obrázků komponent v systémovém adresáři
     def __init__(self, api_client: ApiClient, parent=None):
         super().__init__(parent)
         self.api_client = api_client

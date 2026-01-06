@@ -1,4 +1,7 @@
 # app/run_tab.py
+# Záložka pro spouštění montáže v režimu běhu
+# Umožňuje zobrazení kroků montáže v režimu projektoru na celou obrazovku
+# Sleduje průběh jednotlivých kroků a zaznamenává časy spuštění/dokončení
 
 from typing import List, Dict, Optional
 import os
@@ -29,13 +32,13 @@ from app.steps_tab import BACKEND_MEDIA_ROOT  # reuse media root
 
 class StepRunWindow(QWidget):
     """
-    Full-screen, projector-style view for one assembly.
-    - Shows one step at a time (step_objects only)
-    - 16:9 black canvas, no UI hints (those are in RunProgramTab)
-    - Controls:
-        SPACE = next step
-        ENTER = new product after finish
-        ESC   = exit run mode
+    Okno pro zobrazování montáže
+    - Zobrazuje jeden krok najednou se všemi vizuálními objekty
+    - 16:9 černé plátno v bezrámečkovém okně
+    - Klávesové zkratky:
+        MEZERNÍK = další krok
+        ENTER    = nový produkt po dokončení
+        ESC      = výstup z režimu spuštění
     """
 
     def __init__(self, api_client: ApiClient, assembly_detail: dict, parent=None):
@@ -96,7 +99,7 @@ class StepRunWindow(QWidget):
         # Optional: hide cursor for projector view
         self.setCursor(Qt.CursorShape.BlankCursor)
 
-    # We start execution only once the window is visible and sized
+    
     def showEvent(self, event):
         super().showEvent(event)
         # Fit the 16:9 canvas to the window
@@ -285,7 +288,7 @@ class StepRunWindow(QWidget):
 
         # ESC = exit
         if key == Qt.Key.Key_Escape:
-            # You *can* add confirmation here if assembly is not finished
+            
             self.close()
             return
 
@@ -334,7 +337,7 @@ class RunProgramTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        # Operator instructions (these are NOT shown on projector)
+        # Operator instructions 
         help_label = QLabel(
             "Projection controls:\n"
             "• SPACE – next step\n"

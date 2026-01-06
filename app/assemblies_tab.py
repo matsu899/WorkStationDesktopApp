@@ -1,4 +1,6 @@
 # app/assemblies_tab.py
+# Záložka pro správu typů montáží v GUI aplikace
+# Umožňuje seznam, přidávání, úpravy typů montáží a správu jejich obrázků
 
 from typing import List, Dict
 import os
@@ -32,7 +34,8 @@ ASSEMBLY_IMAGE_SUBDIR = "assemblies"
 
 class AssemblyTypeDialog(QDialog):
     """
-    Dialog for adding/editing AssemblyType.
+    Dialog pro přidávání nebo úpravu typu montáže.
+    Umožňuje zadat název, verzi, popis a vybrat obrázek montáže.
     """
 
     def __init__(self, parent=None, title="Assembly", initial_data: Dict | None = None):
@@ -109,7 +112,8 @@ class AssemblyTypeDialog(QDialog):
 
 class AssembliesTab(QWidget):
     """
-    GUI for AssemblyType list/add/edit.
+    Záložka pro správu typů montáží: seznam, přidávání, úpravy.
+    Zobrazuje všechny dostupné typy montáží a umožňuje jejich správu.
     """
 
     def __init__(self, api_client: ApiClient, parent=None):

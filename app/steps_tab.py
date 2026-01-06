@@ -1,4 +1,7 @@
 # app/steps_tab.py
+# Záložka pro správu kroků montáže a jejich vizuálních prvků
+# Umožňuje definovat kroky montáže, přidávat do nich textové a grafické objekty
+# Obsahuje editor pro umísťování prvků na kreslicí plátno pro jednotlivé kroky
 
 from typing import List, Dict, Optional
 import os
@@ -43,6 +46,9 @@ STEP_OBJECTS_SUBDIR = "step_objects"
 # ---------- Custom scene to handle clicks for adding objects ----------
 
 class StepScene(QGraphicsScene):
+    # Vlastní scéna pro kreslení kroků montáže
+    # Umožňuje zachycování kliknutí na plátno pro přidávání nových objektů
+    # Emituje signál s normalizovanými souřadnicemi (0..1) místa kliknutí
     canvasClicked = pyqtSignal(float, float)  # normalized x, y in [0..1]
 
     def __init__(self, width: int = 800, height: int = 600, parent=None):
@@ -63,7 +69,7 @@ class StepScene(QGraphicsScene):
 # ---------- Small dialogs ----------
 
 class StepDialog(QDialog):
-    """Dialog for adding/editing a step (AssemblyStep)."""
+    """Dialog pro přidávání nebo úpravu kroku montáže (AssemblyStep)."""
 
     def __init__(self, parent=None, title="Step", initial_data: Optional[Dict] = None):
         super().__init__(parent)
@@ -318,7 +324,7 @@ class ResizableRectItem(QGraphicsRectItem):
             self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
-        # no need to call super; default does nothing
+        
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
@@ -347,7 +353,7 @@ class ResizablePixmapItem(QGraphicsPixmapItem):
         self._original_rect = self.boundingRect()
         self.setAcceptHoverEvents(True)
 
-        # also allow moving/selecting
+        # allow moving/selecting
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
@@ -534,7 +540,7 @@ class StepsTab(QWidget):
         canvas_toolbar.addWidget(self.btn_save_layout)
         canvas_toolbar.addStretch()
 
-        # ✅ One 16:9 scene, with explicit canvas rect
+        # One 16:9 scene, with explicit canvas rect
         self.scene = StepScene(1600, 900)
         self.scene.setSceneRect(0, 0, 1600, 900)
         self.scene.setBackgroundBrush(Qt.GlobalColor.transparent)
@@ -553,7 +559,7 @@ class StepsTab(QWidget):
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # let it grow as much as possible in the middle column
+        
         self.view.setSizePolicy(QSizePolicy.Policy.Expanding,
                                 QSizePolicy.Policy.Expanding)
 
@@ -883,8 +889,6 @@ class StepsTab(QWidget):
                 font_size = int(obj.get("font_size", 40))
                 rect = ResizableRectItem(x, y, width_px, height_px)
 
-                # 🔧 CHANGE COLOR HERE:
-                # transparent / subtle background instead of solid yellow
                 rect.setBrush(QBrush(QColor(0, 0, 0, 0)))  # fully transparent
                 rect.setPen(QPen(QColor(200, 200, 200, 120)))  # light border
 
@@ -958,7 +962,6 @@ class StepsTab(QWidget):
         self._pending_add_mode = "image"
 
     def _on_canvas_clicked(self, x_norm: float, y_norm: float):
-        # This is where we actually create the object if we're in a "pending add" mode
         if not self._pending_add_mode or not self.current_step:
             return
 
@@ -1410,7 +1413,6 @@ class StepsTab(QWidget):
                 width_px = br.width()
                 height_px = br.height()
 
-                # 🔴 IMPORTANT: use visual size, not stored width/height
                 pos_x = x_px / w
                 pos_y = y_px / h
                 width = width_px / w

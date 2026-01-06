@@ -1,12 +1,17 @@
 import requests
 from typing import Optional
 
-
+# Klient pro komunikaci s REST API backendu
+# Zajišťuje autentizaci, správu tokenů a komunikaci se všemi API endpointy
+# Obsahuje metody pro správu komponent, montáží, kroků a přihráde k
 class ApiClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
         self.token: Optional[str] = None
 
+    # Vrací HTTP hlavičky s autentizačním tokenem pro API požadavky
+    # Přidává Authorization header ve formátu "Token <klíč>" pro autentizaci DRF
+    # Vrací: slovník s Content-Type a Authorization hlavičkami
     def _headers(self) -> dict:
         headers = {"Content-Type": "application/json"}
         if self.token:
@@ -14,6 +19,11 @@ class ApiClient:
             headers["Authorization"] = f"Token {self.token}"
         return headers
 
+    # Přihlášení uživatele a získání autentizačního tokenu z backendu
+    # Odešle uživatelské jméno a heslo na /api-token-auth/ endpoint
+    # Parametry: username (uživatelské jméno), password (heslo)
+    # Vrací: True pokud se přihlášení podařilo, False pokud je špatné heslo
+    # Vyvolá RuntimeError pokud se vyskytne chyba serveru nebo připojení
     def login(self, username: str, password: str) -> bool:
         url = f"{self.base_url}/api-token-auth/"
         payload = {
@@ -44,6 +54,11 @@ class ApiClient:
             return False
 
         raise RuntimeError(f"Server error {resp.status_code}: {resp.text}")
+    
+    # Získá seznam všech komponent z API backendu
+    # Načte komponenty z endpointu /api/components/
+    # Vrací: seznam slovníků obsahujících data komponent (id, name, description, unit, atd.)
+    # Vyhledává seznam v odpovědi nebo "results" klíč pro stránkované odpovědi DRF
     def get_components(self) -> list[dict]:
         """
         Fetch list of components from API.
@@ -70,6 +85,9 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error loading components: {resp.status_code} {resp.text}")
 
+    # Alternativní verze pro získání seznamu komponent s detailnějšími informacemi
+    # Používá se pro zobrazení úplného seznamu s id, name, description, unit, component_code a image_path
+    # Vrací: seznam slovníků s detailními informacemi o komponentách
     def get_components(self) -> list[dict]:
         """
         GET /api/components/
@@ -97,12 +115,17 @@ class ApiClient:
             data = resp.json()
             if isinstance(data, list):
                 return data
-            if isinstance(data, dict) and "results" in data:  # paginated DRF
+            if isinstance(data, dict) and "results" in data:  # Stránkovaná odpověď DRF
                 return data["results"]
             return []
         else:
-            raise RuntimeError(f"Error loading components: {resp.status_code} {resp.text}")
+            raise RuntimeError(f"Chyba při načítání komponent: {resp.status_code} {resp.text}")
 
+    # Vytvoří novou komponentu v API backendu
+    # Odešle POST požadavek na /api/components/ s daty komponenty
+    # Parametry: component_code (kód komponenty), name (název), unit (jednotka),
+    #            description (popis), image_path (cesta k obrázku)
+    # Vrací: slovník s novce vytvořené komponenty včetně ID
     def create_component(
         self,
         component_code: str,
@@ -114,7 +137,7 @@ class ApiClient:
         """
         POST /api/components/
 
-        Body based on your serializer:
+        Tělo požadavku na základě serializeru:
         {
           "name": "...",
           "description": "...",
@@ -124,7 +147,7 @@ class ApiClient:
         }
         """
         if not self.token:
-            raise RuntimeError("Not authenticated")
+            raise RuntimeError("Neautentizován")
 
         url = f"{self.base_url}/api/components/"
         payload = {
@@ -140,9 +163,9 @@ class ApiClient:
         if resp.status_code in (200, 201):
             return resp.json()
         elif resp.status_code == 400:
-            raise RuntimeError(f"Validation error: {resp.text}")
+            raise RuntimeError(f"Chyba ověřování: {resp.text}")
         else:
-            raise RuntimeError(f"Error creating component: {resp.status_code} {resp.text}")
+            raise RuntimeError(f"Chyba při vytváření komponenty: {resp.status_code} {resp.text}")
 
     def update_component(
         self,
@@ -180,7 +203,9 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error updating component: {resp.status_code} {resp.text}")
         
-    # ----- ASSEMBLY TYPES ("Assemblies" in GUI) -----
+    # ===== TYPY MONTÁŽÍ ("Assemblies" v GUI) =====
+    # Tento oddíl obsahuje metody pro práci s typy montáží
+    # Umožňuje vytváření, čtení a aktualizaci montážních typů
 
     def get_assembly_types(self) -> list[dict]:
         """
@@ -202,6 +227,11 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error loading assemblies: {resp.status_code} {resp.text}")
 
+    # Vytvoří nový typ montáže v API backendu
+    # Odešle POST požadavek na /api/assembly-types/ s parametry montáže
+    # Parametry: name (název montáže), description (popis), version (verze, výchozí "1.0"),
+    #            is_active (zda je montáž aktivní), image_path (obrázek montáže)
+    # Vrací: slovník s novce vytvořeným typem montáže včetně ID
     def create_assembly_type(
         self,
         name: str,
@@ -234,6 +264,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error creating assembly type: {resp.status_code} {resp.text}")
 
+    # Aktualizuje existující typ montáže v API backendu
+    # Odešle PUT požadavek na /api/assembly-types/<id>/ s novými daty
+    # Parametry: assembly_type_id (ID typu k aktualizaci), name, description, version, is_active, image_path
+    # Vrací: slovník s aktualizovaným typem montáže
     def update_assembly_type(
         self,
         assembly_type_id: int,
@@ -267,7 +301,9 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error updating assembly type: {resp.status_code} {resp.text}")
 
-    # ----- ASSEMBLY TYPE DETAIL (with steps etc.) -----
+    # ===== DETAIL TYPU MONTÁŽE (s kroky atd.) =====
+    # Metoda pro získání detailních informací o typu montáže
+    # Vrací informace o montáži včetně všech její kroků a objektů
 
     def get_assembly_type_detail_full(self, assembly_type_id: int) -> dict:
         """
@@ -304,7 +340,9 @@ class ApiClient:
                 f"Error loading assembly detail: {resp.status_code} {resp.text}"
             )
 
-    # ----- STEPS (AssemblyStep) -----
+    # ===== KROKY MONTÁŽE (AssemblyStep) =====
+    # Oddíl obsahuje metody pro správu jednotlivých kroků montáže
+    # Kroky jsou součásti typu montáže a definují pořadí a obsah montážního procesu
 
     def create_step(
         self,
@@ -337,6 +375,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error creating step: {resp.status_code} {resp.text}")
 
+    # Aktualizuje existující krok montáže v API
+    # Odešle PUT požadavek na /api/assembly-steps/<id>/ s novými daty
+    # Parametry: step_id (ID kroku k aktualizaci), assembly_id, order, title, description
+    # Vrací: slovník s aktualizovaným krokem
     def update_step(
         self,
         step_id: int,
@@ -368,6 +410,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error updating step: {resp.status_code} {resp.text}")
 
+    # Aktualizuje existující krok montáže v API
+    # Odešle PUT požadavek na /api/assembly-steps/<id>/ s novými daty
+    # Parametry: step_id (ID kroku k aktualizaci), assembly_id, order, title, description
+    # Vrací: slovník s aktualizovaným krokem
     def delete_step(self, step_id: int) -> None:
         """
         DELETE /api/assembly-steps/<id>/
@@ -382,7 +428,9 @@ class ApiClient:
             raise RuntimeError(f"Error deleting step: {resp.status_code} {resp.text}")
 
 
-    # ----- BINS -----
+    # ===== PŘIHRÁDK Y (BINS) =====
+    # Oddíl pro správu přihráde k (bins) - fyzických míst pro skladování komponent
+    # Každá přihrádk a má kód, lokaci a může být přiřazena určité komponentě
 
     def get_bins(self) -> list[dict]:
         """
@@ -415,6 +463,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error loading bins: {resp.status_code} {resp.text}")
 
+    # Vytvoří novou přihrádku v API backendu
+    # Odešle POST požadavek na /api/bins/ pro vytvoření nového skladovacího místa
+    # Parametry: box_code (kód přihrádk y), component_id (ID komponenty v přihrádc e), location (lokace/poloha)
+    # Vrací: slovník s novce vytvořenou přihrádkou včetně ID
     def create_bin(self, box_code: str, component_id: int | None, location: str = "") -> dict:
         """
         POST /api/bins/
@@ -441,6 +493,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error creating bin: {resp.status_code} {resp.text}")
 
+    # Aktualizuje existující přihrádku v API
+    # Odešle PUT požadavek na /api/bins/<id>/ s novými daty přihrádk y
+    # Parametry: bin_id (ID přihrádk y k aktualizaci), box_code, component_id, location
+    # Vrací: slovník s aktualizovanou přihrádkou
     def update_bin(self, bin_id: int, box_code: str, component_id: int | None, location: str = "") -> dict:
         """
         PUT /api/bins/<id>/
@@ -464,7 +520,9 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error updating bin: {resp.status_code} {resp.text}")
 
-    # ----- STEP REQUIRED COMPONENTS -----
+    # ===== POŽADOVANÉ KOMPONENTY KROKU =====
+    # Oddíl pro správu komponent potřebných pro jednotlivé kroky montáže
+    # Propojuje konkrétní komponenty a přihrádk y s jednotlivými kroky montáže
 
     def create_step_required_component(
         self,
@@ -498,6 +556,11 @@ class ApiClient:
                 f"Error creating step required component: {resp.status_code} {resp.text}"
             )
 
+    # Aktualizuje požadovanou komponentu kroku v API
+    # Odešle PUT požadavek na /api/step-required-components/<id>/ s novými daty
+    # Parametry: src_id (ID záznamu), step_id (ID kroku), component_id (ID komponenty),
+    #            bin_id (ID přihrádk y), quantity (požadované množství)
+    # Vrací: slovník s aktualizovaným záznamem
     def update_step_required_component(
         self,
         src_id: int,
@@ -531,6 +594,9 @@ class ApiClient:
             )
 
 
+    # Smaže požadovanou komponentu kroku z API backendu
+    # Odešle DELETE požadavek na /api/step-required-components/<id>/
+    # Parametr: src_id (ID záznamu o požadované komponentě)
     def delete_step_required_component(self, src_id: int) -> None:
         """
         DELETE /api/step-required-components/<id>/
@@ -546,7 +612,9 @@ class ApiClient:
                 f"Error deleting step required component: {resp.status_code} {resp.text}"
             )
 
-    # ----- STEP OBJECTS -----
+    # ===== OBJEKTY KROKU =====
+    # Oddíl pro správu vizuálních objektů v jednotlivých krocích (texty, obrázky)
+    # Umožňuje umisťovat a upravovat grafické prvky v UI kroku montáže
 
     def create_step_object(
         self,
@@ -593,6 +661,11 @@ class ApiClient:
                 f"Error creating step object: {resp.status_code} {resp.text}"
             )
 
+    # Aktualizuje existující objekt v kroku montáže
+    # Odešle PUT požadavek na /api/step-objects/<id>/ s novými pozicemi a daty
+    # Parametry: obj_id (ID objektu), step_id, object_type, position_x, position_y,
+    #            width, height, z_index, text_content, image_path, font_size
+    # Vrací: slovník s aktualizovaným objektem
     def update_step_object(
         self,
         obj_id: int,
@@ -637,6 +710,9 @@ class ApiClient:
                 f"Error updating step object: {resp.status_code} {resp.text}"
             )
 
+    # Smaže objekt z kroku montáže
+    # Odešle DELETE požadavek na /api/step-objects/<id>/
+    # Parametr: obj_id (ID objektu k smazání)
     def delete_step_object(self, obj_id: int) -> None:
         """
         DELETE /api/step-objects/<id>/
@@ -652,7 +728,9 @@ class ApiClient:
                 f"Error deleting step object: {resp.status_code} {resp.text}"
             )
 
-    # ===== ASSEMBLY EXECUTION / STEP EXECUTION =====
+    # ===== PROVÁDĚNÍ MONTÁŽE / PROVÁDĚNÍ KROKU =====
+    # Oddíl pro spouštění a sledování procesu montáže v reálném čase
+    # Umožňuje zaznamenávat časy zahájení, dokončení a progress jednotlivých kroků
 
     def start_assembly_execution(self, assembly_type_id: int) -> dict:
         """
@@ -674,6 +752,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error starting assembly execution: {resp.status_code} {resp.text}")
 
+    # Zahájí nové provádění montáže
+    # Odešle POST požadavek na /api/assembly-executions/start/ s ID typu montáže
+    # Parametr: assembly_type_id (ID typu montáže k provedení)
+    # Vrací: slovník s novce vytvořeným provádením včetně ID a času zahájení
     def complete_assembly_execution(self, execution_id: int) -> dict:
         """
         POST /api/assembly-executions/<id>/complete/
@@ -691,6 +773,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error completing assembly execution: {resp.status_code} {resp.text}")
 
+    # Zahájí provádění konkrétního kroku v rámci probíhající montáže
+    # Odešle POST požadavek na /api/assembly-executions/<id>/start_step/
+    # Parametry: execution_id (ID provádění montáže), step_id (ID kroku k zahájení)
+    # Vrací: slovník s novce vytvořeným provádením kroku včetné ID a času
     def start_step_execution(self, execution_id: int, step_id: int) -> dict:
         """
         POST /api/assembly-executions/<execution_id>/start_step/
@@ -711,6 +797,10 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error starting step execution: {resp.status_code} {resp.text}")
 
+    # Dokonči provádění jednotlivého kroku montáže
+    # Odešle POST požadavek na /api/step-executions/<id>/complete/
+    # Parametr: step_execution_id (ID provádění kroku k dokončení)
+    # Vrací: slovník s aktualizovaným provádením včetně času dokončení
     def complete_step_execution(self, step_execution_id: int) -> dict:
         """
         POST /api/step-executions/<id>/complete/

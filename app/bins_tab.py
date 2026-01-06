@@ -1,4 +1,6 @@
 # app/bins_tab.py
+# Záložka pro správu přihráděk (bins) - fyzických míst skladování komponent
+# Umožňuje seznam, přidávání, úpravy přihráděk a přiřazení komponent k jednotlivým místům
 
 from typing import List, Dict
 
@@ -24,8 +26,8 @@ from app.api_client import ApiClient
 
 class BinDialog(QDialog):
     """
-    Dialog for adding/editing a Bin.
-    Lets user pick a component from list (or keep it empty).
+    Dialog pro přidávání nebo úpravu přihrádk y.
+    Umožňuje uživateli vybrat komponentu ze seznamu nebo ponechat přihrádku prázdnou.
     """
 
     def __init__(self, parent=None, title="Bin", components: List[Dict] | None = None, initial_data: Dict | None = None):
@@ -80,13 +82,14 @@ class BinDialog(QDialog):
         return {
             "box_code": self.input_box_code.text().strip(),
             "location": self.input_location.text().strip(),
-            "component_id": self.combo_component.currentData(),  # None or int
+            "component_id": self.combo_component.currentData(),  
         }
 
 
 class BinsTab(QWidget):
     """
-    Tab for managing bins: listing, adding, editing.
+    Záložka pro správu přihráděk: seznam, přidávání, úpravy.
+    Spravuje fyzická místa skladování a jejich obsah.
     """
 
     def __init__(self, api_client: ApiClient, parent=None):
