@@ -25,25 +25,13 @@ from app.api_client import ApiClient
 
 
 class BinDialog(QDialog):
-    """
-    Dialog pro přidávání nebo úpravu přihrádk y.
-    Umožňuje uživateli vybrat komponentu ze seznamu nebo ponechat přihrádku prázdnou.
-    """
-
-    def __init__(self, parent=None, title="Bin", components: List[Dict] | None = None, initial_data: Dict | None = None):
+    def __init__(self, parent=None, title="Bin", components=None, initial_data=None):
         super().__init__(parent)
         self.setWindowTitle(title)
 
         self.components = components or []
-
-        self.input_box_code = QLineEdit()
-        self.input_location = QLineEdit()
         self.combo_component = QComboBox()
 
-        self.input_box_code.setPlaceholderText("Unique bin code, e.g. BIN-01")
-        self.input_location.setPlaceholderText("Location, e.g. Shelf A1")
-
-        # First item = empty bin
         self.combo_component.addItem("(empty)", None)
         for comp in self.components:
             code = comp.get("component_code") or ""
@@ -51,11 +39,7 @@ class BinDialog(QDialog):
             label = f"{code} - {name}" if code else name
             self.combo_component.addItem(label, comp.get("id"))
 
-        # Prefill if editing
         if initial_data:
-            self.input_box_code.setText(initial_data.get("box_code", ""))
-            self.input_location.setText(initial_data.get("location", ""))
-
             comp_id = initial_data.get("component_id")
             if comp_id is not None:
                 for i in range(self.combo_component.count()):
@@ -64,8 +48,6 @@ class BinDialog(QDialog):
                         break
 
         form_layout = QFormLayout()
-        form_layout.addRow("Box code:", self.input_box_code)
-        form_layout.addRow("Location:", self.input_location)
         form_layout.addRow("Component:", self.combo_component)
 
         buttons = QDialogButtonBox(
@@ -80,9 +62,7 @@ class BinDialog(QDialog):
 
     def get_data(self) -> Dict:
         return {
-            "box_code": self.input_box_code.text().strip(),
-            "location": self.input_location.text().strip(),
-            "component_id": self.combo_component.currentData(),  
+            "component_id": self.combo_component.currentData(),
         }
 
 
@@ -119,13 +99,13 @@ class BinsTab(QWidget):
 
         # --- Table ---
         # Columns: ID, Box code, Component, Location
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["ID", "Box code", "Component", "Location"])
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["ID", "Bin code", "Component"])
+        header = self.table.horizontalHeader()
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Box code
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Bin code
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)           # Component
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)           # Location
 
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -144,35 +124,30 @@ class BinsTab(QWidget):
 
         self._populate_table(bins)
 
-    def _populate_table(self, bins: List[Dict]):
-        self.table.setRowCount(0)
+        def _populate_table(self, bins: List[Dict]):
+            self.table.setRowCount(0)
 
-        for b in bins:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+            for b in bins:
+                row = self.table.rowCount()
+                self.table.insertRow(row)
 
-            id_val = str(b.get("id", ""))
-            box_code_val = str(b.get("box_code", "") or "")
-            component = b.get("component")
-            if component:
-                comp_code = component.get("component_code") or ""
-                comp_name = component.get("name", "")
-                comp_label = f"{comp_code} - {comp_name}" if comp_code else comp_name
-            else:
-                comp_label = "(empty)"
-            location_val = str(b.get("location", "") or "")
+                id_val = str(b.get("id", ""))
+                bin_code_val = str(b.get("bin_code", "") or "")
 
-            self.table.setItem(row, 0, QTableWidgetItem(id_val))
-            self.table.setItem(row, 1, QTableWidgetItem(box_code_val))
+                component = b.get("component")
+                if component:
+                    comp_code = component.get("component_code") or ""
+                    comp_name = component.get("name", "")
+                    comp_label = f"{comp_code} - {comp_name}" if comp_code else comp_name
+                else:
+                    comp_label = "(empty)"
 
-            comp_item = QTableWidgetItem(comp_label)
-            self.table.setItem(row, 2, comp_item)
+                self.table.setItem(row, 0, QTableWidgetItem(id_val))
+                self.table.setItem(row, 1, QTableWidgetItem(bin_code_val))
+                self.table.setItem(row, 2, QTableWidgetItem(comp_label))
 
-            loc_item = QTableWidgetItem(location_val)
-            self.table.setItem(row, 3, loc_item)
-
-        if bins:
-            self.table.resizeRowsToContents()
+            if bins:
+                self.table.resizeRowsToContents()
 
     # ---- Helpers for selection / editing ----
 
@@ -187,12 +162,10 @@ class BinsTab(QWidget):
             return {}
 
         id_item = self.table.item(row, 0)
-        box_code_item = self.table.item(row, 1)
-        loc_item = self.table.item(row, 3)
+        bin_code_item = self.table.item(row, 1)
 
         bin_id = int(id_item.text()) if id_item and id_item.text().isdigit() else None
 
-        # Get full bin from API (to know current component_id)
         try:
             bins = self.api_client.get_bins()
         except RuntimeError:
@@ -208,8 +181,7 @@ class BinsTab(QWidget):
 
         return {
             "id": bin_id,
-            "box_code": box_code_item.text() if box_code_item else "",
-            "location": loc_item.text() if loc_item else "",
+            "bin_code": bin_code_item.text() if bin_code_item else "",
             "component_id": component_id,
         }
 
@@ -247,16 +219,12 @@ class BinsTab(QWidget):
             return
 
         data = dlg.get_data()
-        if not data["box_code"]:
-            QMessageBox.warning(self, "Missing data", "Box code is required.")
-            return
+
 
         try:
             self.api_client.update_bin(
                 bin_id=bin_data["id"],
-                box_code=data["box_code"],
                 component_id=data["component_id"],
-                location=data["location"],
             )
         except RuntimeError as exc:
             QMessageBox.critical(self, "Error", str(exc))
@@ -277,15 +245,10 @@ class BinsTab(QWidget):
             return
 
         data = dlg.get_data()
-        if not data["box_code"]:
-            QMessageBox.warning(self, "Missing data", "Box code is required.")
-            return
 
         try:
             self.api_client.create_bin(
-                box_code=data["box_code"],
                 component_id=data["component_id"],
-                location=data["location"],
             )
         except RuntimeError as exc:
             QMessageBox.critical(self, "Error", str(exc))

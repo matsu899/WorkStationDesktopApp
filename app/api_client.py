@@ -423,24 +423,11 @@ class ApiClient:
             raise RuntimeError(f"Error deleting step: {resp.status_code} {resp.text}")
 
 
-    # ===== PŘIHRÁDK Y (BINS) =====
-    # Oddíl pro správu přihráde k (bins) - fyzických míst pro skladování komponent
-    # Každá přihrádk a má kód, lokaci a může být přiřazena určité komponentě
+    # ===== BINS =====
 
     def get_bins(self) -> list[dict]:
         """
         GET /api/bins/
-
-        Response example:
-        [
-          {
-            "id": 1,
-            "component": {...} or null,
-            "box_code": "BIN-01",
-            "location": "Shelf A1"
-          },
-          ...
-        ]
         """
         if not self.token:
             raise RuntimeError("Not authenticated")
@@ -458,24 +445,18 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error loading bins: {resp.status_code} {resp.text}")
 
-    # Vytvoří novou přihrádku v API backendu
-    # Odešle POST požadavek na /api/bins/ pro vytvoření nového skladovacího místa
-    # Parametry: box_code (kód přihrádk y), component_id (ID komponenty v přihrádc e), location (lokace/poloha)
-    # Vrací: slovník s novce vytvořenou přihrádkou včetně ID
-    def create_bin(self, box_code: str, component_id: int | None, location: str = "") -> dict:
+
+    def create_bin(self, component_id: int | None) -> dict:
         """
         POST /api/bins/
 
-        BinSerializer expects:
-          component_id (write-only), box_code, location
+        Bin code is generated automatically by backend.
         """
         if not self.token:
             raise RuntimeError("Not authenticated")
 
         url = f"{self.base_url}/api/bins/"
         payload = {
-            "box_code": box_code,
-            "location": location,
             "component_id": component_id,
         }
 
@@ -488,11 +469,8 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error creating bin: {resp.status_code} {resp.text}")
 
-    # Aktualizuje existující přihrádku v API
-    # Odešle PUT požadavek na /api/bins/<id>/ s novými daty přihrádk y
-    # Parametry: bin_id (ID přihrádk y k aktualizaci), box_code, component_id, location
-    # Vrací: slovník s aktualizovanou přihrádkou
-    def update_bin(self, bin_id: int, box_code: str, component_id: int | None, location: str = "") -> dict:
+
+    def update_bin(self, bin_id: int, component_id: int | None) -> dict:
         """
         PUT /api/bins/<id>/
         """
@@ -501,8 +479,6 @@ class ApiClient:
 
         url = f"{self.base_url}/api/bins/{bin_id}/"
         payload = {
-            "box_code": box_code,
-            "location": location,
             "component_id": component_id,
         }
 
@@ -514,10 +490,9 @@ class ApiClient:
             raise RuntimeError(f"Validation error: {resp.text}")
         else:
             raise RuntimeError(f"Error updating bin: {resp.status_code} {resp.text}")
-
-    # ===== POŽADOVANÉ KOMPONENTY KROKU =====
-    # Oddíl pro správu komponent potřebných pro jednotlivé kroky montáže
-    # Propojuje konkrétní komponenty a přihrádk y s jednotlivými kroky montáže
+        # ===== POŽADOVANÉ KOMPONENTY KROKU =====
+        # Oddíl pro správu komponent potřebných pro jednotlivé kroky montáže
+        # Propojuje konkrétní komponenty a přihrádk y s jednotlivými kroky montáže
 
     def create_step_required_component(
         self,
