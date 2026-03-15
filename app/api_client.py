@@ -818,3 +818,17 @@ class ApiClient:
         else:
             raise RuntimeError(f"Error completing step execution: {resp.status_code} {resp.text}")
 
+def create_run_event(self, payload: dict) -> dict:
+    if not self.token:
+        raise RuntimeError("Not authenticated")
+
+    url = f"{self.base_url}/api/run-events/"
+    try:
+        resp = requests.post(url, json=payload, headers=self._headers(), timeout=5.0)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Connection error: {exc}") from exc
+
+    if resp.status_code in (200, 201):
+        return resp.json()
+
+    raise RuntimeError(f"Error creating run event: {resp.status_code} {resp.text}")

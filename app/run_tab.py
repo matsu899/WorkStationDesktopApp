@@ -3,73 +3,80 @@
 # Umožňuje zobrazení kroků montáže v režimu projektoru na celou obrazovku
 # Sleduje průběh jednotlivých kroků a zaznamenává časy spuštění/dokončení
 
-from typing import List, Dict, Optional
-from app.esp_controller import EspController
+from typing import List, Dict, Optional, Set
 import os
 
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QComboBox,
-    QLabel,
-    QMessageBox,
-    QGraphicsView,
-    QGraphicsScene,
-    QGraphicsPixmapItem,
-    QGraphicsTextItem,
-    QGraphicsRectItem,
-    QFrame,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox, QLabel,
+    QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
+    QGraphicsTextItem, QGraphicsRectItem, QFrame,
 )
 from PyQt6.QtGui import QFont, QBrush, QColor, QPixmap, QPen
 from PyQt6.QtCore import Qt
 
 from app.api_client import ApiClient
-from app.steps_tab import BACKEND_MEDIA_ROOT  # reuse media root
+from app.esp_controller import EspController
+from app.steps_tab import BACKEND_MEDIA_ROOT
 
 
 # ---------- Full-screen projection window ----------
 
 class StepRunWindow(QWidget):
-    """
-    Okno pro zobrazování montáže
-    - Zobrazuje jeden krok najednou se všemi vizuálními objekty
-    - 16:9 černé plátno v bezrámečkovém okně
-    - Klávesové zkratky:
-        MEZERNÍK = další krok
-        ENTER    = nový produkt po dokončení
-        ESC      = výstup z režimu spuštění
-    """
-
     def __init__(self, api_client: ApiClient, assembly_detail: dict, parent=None):
         super().__init__(parent)
         self.api_client = api_client
         self.assembly_detail = assembly_detail
 
-        # Steps with step_objects are in detail_full
         self.steps: List[Dict] = sorted(
             assembly_detail.get("steps", []),
             key=lambda s: s.get("order", 0),
         )
 
-        self.esp = EspController(port_name="COM7")
-        self.expected_sections = set()
-
-        self.esp.gate_triggered.connect(self._handle_gate_trigger)
-        self.esp.log_message.connect(self._on_esp_log)
-        self.esp.error_received.connect(self._on_esp_error)
-        self.esp.connected_changed.connect(self._on_esp_connected_changed)
-
-        self.esp.connect_port()
-
-        # Execution state
         self.current_execution_id: Optional[int] = None
         self.current_step_execution_id: Optional[int] = None
         self.current_step_index: int = 0
         self.finished: bool = False
 
+        # NEW: ESP + run-state
+        self.esp = EspController(port_name="COM7")
+        self.expected_sections: Set[int] = set()
+        self.triggered_sections: Set[int] = set()
+
+        self._connect_esp_signals()
         self._build_ui()
+
+    def _connect_esp_signals(self):
+        self.esp.gate_triggered.connect(self._handle_gate_trigger)
+        self.esp.log_message.connect(self._on_esp_log)
+        self.esp.error_received.connect(self._on_esp_error)
+        self.esp.connected_changed.connect(self._on_esp_connected_changed)
+
+    def _on_esp_log(self, msg: str):
+        print(f"[ESP] {msg}")
+
+    def _on_esp_error(self, msg: str):
+        print(f"[ESP ERROR] {msg}")
+
+    def _on_esp_connected_changed(self, connected: bool):
+        print(f"[ESP CONNECTED] {connected}")
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+
+        if not self.esp.is_connected:
+            self.esp.connect_port()
+
+        if self.current_execution_id is None and not self.finished and self.steps:
+            self._start_new_execution()
+
+    def closeEvent(self, event):
+        try:
+            if self.esp:
+                self.esp.clear_sections()
+                self.esp.disconnect_port()
+        finally:
+            super().closeEvent(event)
 
     # ---------- UI ----------
 
@@ -127,12 +134,6 @@ class StepRunWindow(QWidget):
     # ---------- Execution control ----------
 
     def _start_new_execution(self):
-        """
-        Start AssemblyExecution + first StepExecution.
-        Called:
-          - first time window shown
-          - after ENTER on finish screen
-        """
         if not self.steps:
             return
 
@@ -148,6 +149,8 @@ class StepRunWindow(QWidget):
         self.current_step_execution_id = None
         self.current_step_index = 0
         self.finished = False
+        self.expected_sections = set()
+        self.triggered_sections = set()
 
         self._start_step(self.current_step_index)
 
@@ -168,7 +171,90 @@ class StepRunWindow(QWidget):
             return
 
         self.current_step_execution_id = step_exec["id"]
+        self.triggered_sections = set()
+
         self._show_step(step)
+        self._prepare_step_guidance(step)
+
+    def _prepare_step_guidance(self, step: Dict):
+        self.expected_sections = self._resolve_expected_sections(step)
+        self._push_led_state()
+
+    def _resolve_expected_sections(self, step: Dict) -> Set[int]:
+        """
+        Temporary solution:
+        expects backend step detail to contain required_components,
+        and each required_component may contain bin / bin_id.
+        You map bin_id -> section number here.
+        """
+        BIN_TO_SECTION = {
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 4,
+            5: 5,
+            6: 6,
+        }
+
+        sections: Set[int] = set()
+
+        for rc in step.get("required_components", []):
+            bin_id = None
+
+            if isinstance(rc.get("bin"), dict):
+                bin_id = rc["bin"].get("id")
+            else:
+                bin_id = rc.get("bin") or rc.get("bin_id")
+
+            if bin_id in BIN_TO_SECTION:
+                sections.add(BIN_TO_SECTION[bin_id])
+
+        return sections
+
+    def _push_led_state(self):
+        if self.esp and self.esp.is_connected:
+            self.esp.set_sections_by_numbers(sorted(self.expected_sections))
+
+    def _handle_gate_trigger(self, section: int):
+        print(f"Triggered section: {section}")
+
+        if self.finished:
+            return
+
+        if section in self.expected_sections:
+            self.triggered_sections.add(section)
+
+            # remove picked section from active list
+            self.expected_sections.discard(section)
+            self._push_led_state()
+
+            # if step is done, auto-finish it and advance
+            if not self.expected_sections:
+                self._complete_current_step()
+
+                if self.current_step_index + 1 < len(self.steps):
+                    self.current_step_index += 1
+                    self._start_step(self.current_step_index)
+                else:
+                    self._complete_assembly()
+                    self._show_finish_screen()
+        else:
+            self._log_wrong_gate(section)
+
+    def _log_wrong_gate(self, section: int):
+        print(f"Wrong gate triggered: {section}")
+
+        try:
+            self.api_client.create_run_event({
+                "assembly_execution": self.current_execution_id,
+                "step_execution": self.current_step_execution_id,
+                "step": self.steps[self.current_step_index]["id"],
+                "event_type": "wrong_gate",
+                "triggered_section": section,
+                "expected_sections": sorted(self.expected_sections),
+            })
+        except RuntimeError as exc:
+            print(f"Failed to log wrong gate: {exc}")
 
     def _complete_current_step(self):
         if not self.current_step_execution_id:
@@ -414,38 +500,3 @@ class RunProgramTab(QWidget):
         run_window = StepRunWindow(self.api_client, detail, parent=self)
         self._current_run_window = run_window
         run_window.showFullScreen()
-
-def _on_esp_log(self, msg: str):
-    print(msg)
-
-def _on_esp_error(self, msg: str):
-    print("ESP ERROR:", msg)
-
-def _on_esp_connected_changed(self, connected: bool):
-    print("ESP connected:", connected)
-
-def _handle_gate_trigger(self, section: int):
-    print(f"Gate triggered: {section}")
-
-    if section in self.expected_sections:
-        print("Correct gate")
-        # later:
-        # - mark component/bin as picked
-        # - update expected sections
-        # - send new LED state
-    else:
-        print("Wrong gate")
-        # later:
-        # - log error to backend
-
-def _update_leds_for_current_step(self):
-    # Example only:
-    self.expected_sections = {2, 5}
-    self.esp.set_sections_by_numbers(self.expected_sections)
-
-def closeEvent(self, event):
-    try:
-        if hasattr(self, "esp") and self.esp:
-            self.esp.disconnect_port()
-    finally:
-        super().closeEvent(event)
