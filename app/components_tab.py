@@ -36,30 +36,24 @@ COMPONENT_IMAGE_SUBDIR = "components"
 class ComponentDialog(QDialog):
     """
     Dialog pro přidávání nebo úpravy komponenty.
-    Pokud je zadán initial_data, pole jsou předvyplniténa.
-    Umožňuje výběr obrázku z systému.
+    Kód komponenty generuje backend automaticky, uživatel ho nezadává.
     """
 
     def __init__(self, parent=None, title="Component", initial_data: Dict | None = None):
         super().__init__(parent)
         self.setWindowTitle(title)
 
-        self.input_code = QLineEdit()
         self.input_name = QLineEdit()
         self.input_unit = QLineEdit()
         self.input_description = QLineEdit()
         self.input_image_path = QLineEdit()
 
-        # Text inside inputs
-        self.input_code.setPlaceholderText("e.g. C001")
         self.input_name.setPlaceholderText("Component name")
-        self.input_unit.setPlaceholderText("e.g. pcs, kg, 250, ...")
+        self.input_unit.setPlaceholderText("e.g. pcs, kg, mm, ...")
         self.input_description.setPlaceholderText("Optional description")
         self.input_image_path.setPlaceholderText("Path to image file (optional)")
 
-        # Prefill if editing
         if initial_data:
-            self.input_code.setText(initial_data.get("component_code", ""))
             self.input_name.setText(initial_data.get("name", ""))
             self.input_unit.setText(initial_data.get("unit", ""))
             self.input_description.setText(initial_data.get("description", ""))
@@ -79,12 +73,10 @@ class ComponentDialog(QDialog):
         img_row_widget.setLayout(img_row_layout)
 
         form_layout = QFormLayout()
-        form_layout.addRow("Component code:", self.input_code)
         form_layout.addRow("Name:", self.input_name)
         form_layout.addRow("Unit:", self.input_unit)
         form_layout.addRow("Description:", self.input_description)
         form_layout.addRow("Image:", img_row_widget)
-
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -108,13 +100,11 @@ class ComponentDialog(QDialog):
 
     def get_data(self) -> Dict[str, str]:
         return {
-            "component_code": self.input_code.text().strip(),
             "name": self.input_name.text().strip(),
             "unit": self.input_unit.text().strip(),
             "description": self.input_description.text().strip(),
-            "image_abs_path": self.input_image_path.text().strip(),  # absolute path (if any)
+            "image_abs_path": self.input_image_path.text().strip(),
         }
-
 
 class ComponentsTab(QWidget):
     # Záložka pro správu komponent
@@ -296,8 +286,8 @@ class ComponentsTab(QWidget):
 
         new_data = dlg.get_data()
 
-        if not new_data["component_code"] or not new_data["name"]:
-            QMessageBox.warning(self, "Missing data", "Code and Name are required.")
+        if not new_data["name"]:
+            QMessageBox.warning(self, "Missing data", "Name is required.")
             return
 
         if not new_data["unit"]:
@@ -316,7 +306,7 @@ class ComponentsTab(QWidget):
                 os.makedirs(dest_dir, exist_ok=True)
 
                 _, ext = os.path.splitext(image_abs)
-                safe_code = new_data["component_code"] or "component"
+                safe_code = comp_data["component_code"] or "component"
                 dest_filename = f"{safe_code}{ext}"
                 dest_path = os.path.join(dest_dir, dest_filename)
 
@@ -327,14 +317,13 @@ class ComponentsTab(QWidget):
                     QMessageBox.warning(self, "Image error", f"Could not copy image:\n{exc}")
 
         try:
-            self.api_client.update_component(
-                component_id=comp_data["id"],
-                component_code=new_data["component_code"],
-                name=new_data["name"],
-                unit=new_data["unit"],
-                description=new_data["description"],
-                image_path=image_rel,
-            )
+           self.api_client.update_component(
+            component_id=comp_data["id"],
+            name=new_data["name"],
+            unit=new_data["unit"],
+            description=new_data["description"],
+            image_path=image_rel,
+        )
         except RuntimeError as exc:
             QMessageBox.critical(self, "Error", str(exc))
             return
@@ -349,10 +338,9 @@ class ComponentsTab(QWidget):
             return
 
         data = dlg.get_data()
-        if not data["component_code"] or not data["name"]:
-            QMessageBox.warning(self, "Missing data", "Code and Name are required.")
+        if not data["name"]:
+            QMessageBox.warning(self, "Missing data", "Name is required.")
             return
-
         if not data["unit"]:
             QMessageBox.warning(self, "Missing data", "Unit is required.")
             return
@@ -369,8 +357,8 @@ class ComponentsTab(QWidget):
                 os.makedirs(dest_dir, exist_ok=True)
 
                 _, ext = os.path.splitext(src_path)
-                safe_code = data["component_code"] or "component"
-                dest_filename = f"{safe_code}{ext}"
+                safe_name = (data["name"] or "component").replace(" ", "_")
+                dest_filename = f"{safe_name}{ext}"
                 dest_path = os.path.join(dest_dir, dest_filename)
 
                 try:
@@ -381,7 +369,6 @@ class ComponentsTab(QWidget):
 
         try:
             self.api_client.create_component(
-                component_code=data["component_code"],
                 name=data["name"],
                 unit=data["unit"],
                 description=data["description"],

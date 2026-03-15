@@ -126,14 +126,13 @@ class ApiClient:
     # Parametry: component_code (kód komponenty), name (název), unit (jednotka),
     #            description (popis), image_path (cesta k obrázku)
     # Vrací: slovník s novce vytvořené komponenty včetně ID
-    def create_component(
-        self,
-        component_code: str,
-        name: str,
-        unit: str,
-        description: str = "",
-        image_path: str = "",
-    ) -> dict:
+    def create_component(self, name: str, unit: str, description: str = "", image_path: str = ""):
+        payload = {
+            "name": name,
+            "unit": unit,
+            "description": description,
+            "image_path": image_path,
+        }
         """
         POST /api/components/
 
@@ -154,7 +153,6 @@ class ApiClient:
             "name": name,
             "description": description,
             "unit": unit,
-            "component_code": component_code,
             "image_path": image_path,
         }
 
@@ -167,15 +165,13 @@ class ApiClient:
         else:
             raise RuntimeError(f"Chyba při vytváření komponenty: {resp.status_code} {resp.text}")
 
-    def update_component(
-        self,
-        component_id: int,
-        component_code: str,
-        name: str,
-        unit: str,
-        description: str = "",
-        image_path: str = "",
-    ) -> dict:
+    def update_component(self, component_id: int, name: str, unit: str, description: str = "", image_path: str = ""):
+        payload = {
+            "name": name,
+            "unit": unit,
+            "description": description,
+            "image_path": image_path,
+        }
         """
         Update existing component.
 
@@ -190,7 +186,6 @@ class ApiClient:
             "name": name,
             "description": description,
             "unit": unit,
-            "component_code": component_code,
             "image_path": image_path,
         }
 
