@@ -73,12 +73,15 @@ class AssemblyTypeDialog(QDialog):
         img_row_layout.addWidget(btn_browse)
         btn_browse.clicked.connect(self._browse_image)
 
+        img_row_widget = QWidget()
+        img_row_widget.setLayout(img_row_layout)
+
         form_layout = QFormLayout()
         form_layout.addRow("Name:", self.input_name)
         form_layout.addRow("Version:", self.input_version)
         form_layout.addRow("Description:", self.input_description)
         form_layout.addRow("Active:", self.checkbox_active)
-        form_layout.addRow("Image:", img_row_layout)
+        form_layout.addRow("Image:", img_row_widget)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
