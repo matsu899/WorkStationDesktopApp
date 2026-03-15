@@ -4,6 +4,7 @@
 # Sleduje průběh jednotlivých kroků a zaznamenává časy spuštění/dokončení
 
 from typing import List, Dict, Optional
+from app.esp_controller import EspController
 import os
 
 from PyQt6.QtWidgets import (
@@ -51,6 +52,16 @@ class StepRunWindow(QWidget):
             assembly_detail.get("steps", []),
             key=lambda s: s.get("order", 0),
         )
+
+        self.esp = EspController(port_name="COM7")
+        self.expected_sections = set()
+
+        self.esp.gate_triggered.connect(self._handle_gate_trigger)
+        self.esp.log_message.connect(self._on_esp_log)
+        self.esp.error_received.connect(self._on_esp_error)
+        self.esp.connected_changed.connect(self._on_esp_connected_changed)
+
+        self.esp.connect_port()
 
         # Execution state
         self.current_execution_id: Optional[int] = None
@@ -404,3 +415,37 @@ class RunProgramTab(QWidget):
         self._current_run_window = run_window
         run_window.showFullScreen()
 
+def _on_esp_log(self, msg: str):
+    print(msg)
+
+def _on_esp_error(self, msg: str):
+    print("ESP ERROR:", msg)
+
+def _on_esp_connected_changed(self, connected: bool):
+    print("ESP connected:", connected)
+
+def _handle_gate_trigger(self, section: int):
+    print(f"Gate triggered: {section}")
+
+    if section in self.expected_sections:
+        print("Correct gate")
+        # later:
+        # - mark component/bin as picked
+        # - update expected sections
+        # - send new LED state
+    else:
+        print("Wrong gate")
+        # later:
+        # - log error to backend
+
+def _update_leds_for_current_step(self):
+    # Example only:
+    self.expected_sections = {2, 5}
+    self.esp.set_sections_by_numbers(self.expected_sections)
+
+def closeEvent(self, event):
+    try:
+        if hasattr(self, "esp") and self.esp:
+            self.esp.disconnect_port()
+    finally:
+        super().closeEvent(event)
