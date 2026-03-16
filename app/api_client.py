@@ -498,21 +498,20 @@ class ApiClient:
         self,
         step_id: int,
         component_id: int,
-        bin_id: int | None,
+        preferred_bin_ids: list[int] | None,
         quantity: int,
     ) -> dict:
         """
         POST /api/step-required-components/
-        If your serializer has `step_id` (write-only) then we must send `step_id`.
         """
         if not self.token:
             raise RuntimeError("Not authenticated")
 
         url = f"{self.base_url}/api/step-required-components/"
         payload = {
-            "step_id": step_id,        
+            "step_id": step_id,
             "component_id": component_id,
-            "bin_id": bin_id,
+            "preferred_bin_ids": preferred_bin_ids or [],
             "quantity": quantity,
         }
 
@@ -526,17 +525,13 @@ class ApiClient:
                 f"Error creating step required component: {resp.status_code} {resp.text}"
             )
 
-    # Aktualizuje požadovanou komponentu kroku v API
-    # Odešle PUT požadavek na /api/step-required-components/<id>/ s novými daty
-    # Parametry: src_id (ID záznamu), step_id (ID kroku), component_id (ID komponenty),
-    #            bin_id (ID přihrádk y), quantity (požadované množství)
-    # Vrací: slovník s aktualizovaným záznamem
+
     def update_step_required_component(
         self,
         src_id: int,
         step_id: int,
         component_id: int,
-        bin_id: int | None,
+        preferred_bin_ids: list[int] | None,
         quantity: int,
     ) -> dict:
         """
@@ -547,9 +542,9 @@ class ApiClient:
 
         url = f"{self.base_url}/api/step-required-components/{src_id}/"
         payload = {
-            "step_id": step_id,          
+            "step_id": step_id,
             "component_id": component_id,
-            "bin_id": bin_id,
+            "preferred_bin_ids": preferred_bin_ids or [],
             "quantity": quantity,
         }
 

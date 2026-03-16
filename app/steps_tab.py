@@ -187,7 +187,8 @@ class RequiredComponentDialog(QDialog):
         if initial_data:
             # preselect component
             comp_id = initial_data.get("component_id")
-            bin_id = initial_data.get("bin_id")
+            preferred_bins = initial_data.get("preferred_bins") or []
+            bin_id = preferred_bins[0].get("id") if preferred_bins else None
             qty = initial_data.get("quantity", 1)
             self.spin_quantity.setValue(qty)
 
@@ -219,9 +220,10 @@ class RequiredComponentDialog(QDialog):
         layout.addWidget(buttons)
 
     def get_data(self) -> Dict:
+        selected_bin = self.combo_bin.currentData()
         return {
             "component_id": self.combo_component.currentData(),
-            "bin_id": self.combo_bin.currentData(),
+            "preferred_bin_ids": [selected_bin] if selected_bin is not None else [],
             "quantity": int(self.spin_quantity.value()),
         }
 
@@ -1201,7 +1203,7 @@ class StepsTab(QWidget):
             self.api_client.create_step_required_component(
                 step_id=self.current_step["id"],
                 component_id=data["component_id"],
-                bin_id=data["bin_id"],
+                preferred_bin_ids=data["preferred_bin_ids"],
                 quantity=data["quantity"],
             )
         except RuntimeError as exc:
@@ -1222,7 +1224,7 @@ class StepsTab(QWidget):
 
         initial_data = {
             "component_id": rc.get("component", {}).get("id") if rc.get("component") else None,
-            "bin_id": rc.get("bin", {}).get("id") if rc.get("bin") else None,
+            "preferred_bin_ids": [b.get("id") for b in rc.get("preferred_bins", []) if b.get("id") is not None],
             "quantity": rc.get("quantity", 1),
         }
 
@@ -1253,7 +1255,7 @@ class StepsTab(QWidget):
                 src_id=rc["id"],
                 step_id=self.current_step["id"],
                 component_id=data["component_id"],
-                bin_id=data["bin_id"],
+                preferred_bin_ids=data["preferred_bin_ids"],
                 quantity=data["quantity"],
             )
         except RuntimeError as exc:
