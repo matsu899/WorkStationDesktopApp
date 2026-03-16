@@ -173,15 +173,15 @@ class RequiredComponentDialog(QDialog):
 
         self.combo_bin.addItem("(no bin)", None)
         for b in bins:
-            box = b.get("box_code", "")
+            bin_code = b.get("bin_code", "")
             comp = b.get("component")
             if comp:
                 comp_code = comp.get("component_code") or ""
                 comp_name = comp.get("name", "")
                 comp_label = f"{comp_code} - {comp_name}" if comp_code else comp_name
-                label = f"{box} ({comp_label})"
+                label = f"{bin_code} ({comp_label})" if bin_code else comp_label
             else:
-                label = box or f"Bin {b.get('id')}"
+                label = bin_code or f"Bin {b.get('id')}"
             self.combo_bin.addItem(label, b.get("id"))
 
         if initial_data:

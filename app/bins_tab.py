@@ -124,30 +124,30 @@ class BinsTab(QWidget):
 
         self._populate_table(bins)
 
-        def _populate_table(self, bins: List[Dict]):
-            self.table.setRowCount(0)
+    def _populate_table(self, bins: List[Dict]):
+        self.table.setRowCount(0)
 
-            for b in bins:
-                row = self.table.rowCount()
-                self.table.insertRow(row)
+        for b in bins:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
 
-                id_val = str(b.get("id", ""))
-                bin_code_val = str(b.get("bin_code", "") or "")
+            id_val = str(b.get("id", ""))
+            bin_code_val = str(b.get("bin_code", "") or "")
 
-                component = b.get("component")
-                if component:
-                    comp_code = component.get("component_code") or ""
-                    comp_name = component.get("name", "")
-                    comp_label = f"{comp_code} - {comp_name}" if comp_code else comp_name
-                else:
-                    comp_label = "(empty)"
+            component = b.get("component")
+            if component:
+                comp_code = component.get("component_code") or ""
+                comp_name = component.get("name", "")
+                comp_label = f"{comp_code} - {comp_name}" if comp_code else comp_name
+            else:
+                comp_label = "(empty)"
 
-                self.table.setItem(row, 0, QTableWidgetItem(id_val))
-                self.table.setItem(row, 1, QTableWidgetItem(bin_code_val))
-                self.table.setItem(row, 2, QTableWidgetItem(comp_label))
+            self.table.setItem(row, 0, QTableWidgetItem(id_val))
+            self.table.setItem(row, 1, QTableWidgetItem(bin_code_val))
+            self.table.setItem(row, 2, QTableWidgetItem(comp_label))
 
-            if bins:
-                self.table.resizeRowsToContents()
+        if bins:
+            self.table.resizeRowsToContents()
 
     # ---- Helpers for selection / editing ----
 
