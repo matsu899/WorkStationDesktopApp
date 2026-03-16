@@ -1135,7 +1135,7 @@ class StepsTab(QWidget):
 
             id_val = str(rc.get("id", ""))
             comp = rc.get("component")
-            bin_ = rc.get("bin")
+            preferred_bins = rc.get("preferred_bins", []) or []
             qty_val = str(rc.get("quantity", 1))
 
             if comp:
@@ -1145,9 +1145,12 @@ class StepsTab(QWidget):
             else:
                 comp_label = "(unknown)"
 
-            if bin_:
-                bin_box = bin_.get("box_code", "")
-                bin_label = bin_box or f"Bin {bin_.get('id')}"
+            if preferred_bins:
+                labels = []
+                for b in preferred_bins:
+                    bin_code = b.get("bin_code", "") or f"Bin {b.get('id')}"
+                    labels.append(bin_code)
+                bin_label = ", ".join(labels)
             else:
                 bin_label = "(no bin)"
 

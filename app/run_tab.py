@@ -38,7 +38,7 @@ class StepRunWindow(QWidget):
         self.finished: bool = False
 
         # NEW: ESP + run-state
-        self.esp = EspController(port_name="COM7")
+        self.esp = EspController(port_name="COM4")
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
@@ -60,15 +60,7 @@ class StepRunWindow(QWidget):
     def _on_esp_connected_changed(self, connected: bool):
         print(f"[ESP CONNECTED] {connected}")
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
-        if not self.esp.is_connected:
-            self.esp.connect_port()
-
-        if self.current_execution_id is None and not self.finished and self.steps:
-            self._start_new_execution()
 
     def closeEvent(self, event):
         try:
@@ -120,8 +112,11 @@ class StepRunWindow(QWidget):
     
     def showEvent(self, event):
         super().showEvent(event)
-        # Fit the 16:9 canvas to the window
         self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+
+        if not self.esp.is_connected:
+            ok = self.esp.connect_port()
+            print("ESP connect result:", ok)
 
         if self.current_execution_id is None and not self.finished and self.steps:
             self._start_new_execution()
@@ -212,8 +207,11 @@ class StepRunWindow(QWidget):
         return sections
 
     def _push_led_state(self):
+        print("push_led_state, connected=", self.esp.is_connected, "sections=", sorted(self.expected_sections))
         if self.esp and self.esp.is_connected:
             self.esp.set_sections_by_numbers(sorted(self.expected_sections))
+        else:
+            print("ESP not connected, LED state not sent")
 
     def _handle_gate_trigger(self, section: int):
         print(f"Triggered section: {section}")

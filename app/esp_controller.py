@@ -81,6 +81,7 @@ class EspController(QObject):
         return [p.device for p in serial.tools.list_ports.comports()]
 
     def connect_port(self, port_name: Optional[str] = None) -> bool:
+        print("connect_port called", self, port_name, self.port_name)
         if port_name:
             self.port_name = port_name
 
@@ -98,8 +99,12 @@ class EspController(QObject):
                 write_timeout=0.5,
             )
 
-            # Give ESP some time after opening port
-            time.sleep(0.2)
+            # ESP32 often resets when serial is opened
+            time.sleep(1.0)
+
+            # Clear any boot noise / stale buffered data
+            self._ser.reset_input_buffer()
+            self._ser.reset_output_buffer()
 
             self._reader = EspReaderThread(self._ser)
             self._reader.line_received.connect(self._handle_line)
@@ -141,6 +146,7 @@ class EspController(QObject):
         self._set_connected(False)
 
     def send_raw(self, command: str) -> bool:
+        print("send_raw called", self, "ser=", self._ser, "open=", self._ser.is_open if self._ser else None)
         if not self._ser or not self._ser.is_open:
             self.error_received.emit("ESP is not connected.")
             return False
