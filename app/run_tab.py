@@ -42,6 +42,9 @@ class StepRunWindow(QWidget):
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
+        # organizer mapping
+        self.bin_to_section = {}
+
         self._connect_esp_signals()
         self._build_ui()
 
@@ -175,34 +178,44 @@ class StepRunWindow(QWidget):
         self.expected_sections = self._resolve_expected_sections(step)
         self._push_led_state()
 
-    def _resolve_expected_sections(self, step: Dict) -> Set[int]:
-        """
-        Temporary solution:
-        expects backend step detail to contain required_components,
-        and each required_component may contain bin / bin_id.
-        You map bin_id -> section number here.
-        """
-        BIN_TO_SECTION = {
-            1: 1,
-            2: 2,
-            3: 3,
-            4: 4,
-            5: 5,
-            6: 6,
-        }
+    def _load_organizer_mapping(self):
+        slot_states = self.api_client.get_organizer_slot_states(organizer_id=1)
 
+        self.bin_to_section = {}
+
+        for slot in slot_states:
+            if not slot.get("is_present"):
+                continue
+            if slot.get("is_empty"):
+                continue
+
+            bin_data = slot.get("bin")
+            if not bin_data:
+                continue
+
+            bin_id = bin_data.get("id")
+            position = slot.get("position")
+
+            if bin_id and position:
+                self.bin_to_section[int(bin_id)] = int(position)
+
+        print("bin_to_section =", self.bin_to_section)
+
+    def _resolve_expected_sections(self, step: Dict) -> Set[int]:
         sections: Set[int] = set()
 
         for rc in step.get("required_components", []):
-            bin_id = None
+            preferred_bins = rc.get("preferred_bins", [])
 
-            if isinstance(rc.get("bin"), dict):
-                bin_id = rc["bin"].get("id")
-            else:
-                bin_id = rc.get("bin") or rc.get("bin_id")
+            for bin_data in preferred_bins:
+                bin_id = bin_data.get("id")
+                if not bin_id:
+                    continue
 
-            if bin_id in BIN_TO_SECTION:
-                sections.add(BIN_TO_SECTION[bin_id])
+                section = self.bin_to_section.get(int(bin_id))
+                if section:
+                    sections.add(section)
+                    break
 
         return sections
 
