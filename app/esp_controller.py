@@ -95,12 +95,12 @@ class EspController(QObject):
             self._ser = serial.Serial(
                 port=self.port_name,
                 baudrate=self.baudrate,
-                timeout=0.2,
-                write_timeout=0.5,
+                timeout=1.0,
+                write_timeout=2.0,
             )
 
             # ESP32 often resets when serial is opened
-            time.sleep(1.0)
+            time.sleep(2.0)
 
             # Clear any boot noise / stale buffered data
             self._ser.reset_input_buffer()
@@ -159,7 +159,7 @@ class EspController(QObject):
             return True
         except serial.SerialException as e:
             self.error_received.emit(f"Failed to send command: {e}")
-            self.disconnect_port()
+            # self.disconnect_port()
             return False
         except Exception as e:
             self.error_received.emit(f"Unexpected send error: {e}")

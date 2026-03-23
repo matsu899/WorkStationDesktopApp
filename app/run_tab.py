@@ -3,6 +3,7 @@
 # Umožňuje zobrazení kroků montáže v režimu projektoru na celou obrazovku
 # Sleduje průběh jednotlivých kroků a zaznamenává časy spuštění/dokončení
 
+from time import time
 from typing import List, Dict, Optional, Set
 import os
 
@@ -38,7 +39,7 @@ class StepRunWindow(QWidget):
         self.finished: bool = False
 
         # NEW: ESP + run-state
-        self.esp = EspController(port_name="COM4")
+        self.esp = EspController(port_name="COM5")
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
@@ -69,6 +70,7 @@ class StepRunWindow(QWidget):
         try:
             if self.esp:
                 self.esp.clear_sections()
+                time.sleep(0.1)
                 self.esp.disconnect_port()
         finally:
             super().closeEvent(event)
@@ -175,7 +177,9 @@ class StepRunWindow(QWidget):
         self._prepare_step_guidance(step)
 
     def _prepare_step_guidance(self, step: Dict):
+        self._load_organizer_mapping()
         self.expected_sections = self._resolve_expected_sections(step)
+        print("expected_sections =", sorted(self.expected_sections))
         self._push_led_state()
 
     def _load_organizer_mapping(self):

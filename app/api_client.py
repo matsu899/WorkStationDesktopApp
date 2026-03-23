@@ -782,37 +782,37 @@ class ApiClient:
             raise RuntimeError(f"Validation error: {resp.text}")
         else:
             raise RuntimeError(f"Error completing step execution: {resp.status_code} {resp.text}")
+        
+    def get_organizer_slot_states(self, organizer_id: int) -> list[dict]:
+        if not self.token:
+            raise RuntimeError("Not authenticated")
 
-def create_run_event(self, payload: dict) -> dict:
-    if not self.token:
-        raise RuntimeError("Not authenticated")
+        url = f"{self.base_url}/api/organizer-slot-states/?organizer={organizer_id}"
+        resp = requests.get(url, headers=self._headers(), timeout=5.0)
 
-    url = f"{self.base_url}/api/run-events/"
-    try:
-        resp = requests.post(url, json=payload, headers=self._headers(), timeout=5.0)
-    except requests.RequestException as exc:
-        raise RuntimeError(f"Connection error: {exc}") from exc
-
-    if resp.status_code in (200, 201):
-        return resp.json()
-
-    raise RuntimeError(f"Error creating run event: {resp.status_code} {resp.text}")
-
-def get_organizer_slot_states(self, organizer_id: int) -> list[dict]:
-    if not self.token:
-        raise RuntimeError("Not authenticated")
-
-    url = f"{self.base_url}/api/organizer-slot-states/?organizer={organizer_id}"
-    resp = requests.get(url, headers=self._headers(), timeout=5.0)
-
-    if resp.status_code == 200:
-        data = resp.json()
-        if isinstance(data, list):
-            return data
-        if isinstance(data, dict) and "results" in data:
-            return data["results"]
-        return []
-    else:
-        raise RuntimeError(
-            f"Error loading organizer slot states: {resp.status_code} {resp.text}"
+        if resp.status_code == 200:
+            data = resp.json()
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict) and "results" in data:
+                return data["results"]
+            return []
+        else:
+            raise RuntimeError(
+                f"Error loading organizer slot states: {resp.status_code} {resp.text}"
         )
+
+    def create_run_event(self, payload: dict) -> dict:
+        if not self.token:
+            raise RuntimeError("Not authenticated")
+
+        url = f"{self.base_url}/api/run-events/"
+        try:
+            resp = requests.post(url, json=payload, headers=self._headers(), timeout=5.0)
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Connection error: {exc}") from exc
+
+        if resp.status_code in (200, 201):
+            return resp.json()
+
+        raise RuntimeError(f"Error creating run event: {resp.status_code} {resp.text}")
