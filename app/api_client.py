@@ -802,11 +802,11 @@ class ApiClient:
                 f"Error loading organizer slot states: {resp.status_code} {resp.text}"
         )
 
-    def create_run_event(self, payload: dict) -> dict:
+    def create_error_log(self, payload: dict) -> dict:
         if not self.token:
             raise RuntimeError("Not authenticated")
 
-        url = f"{self.base_url}/api/run-events/"
+        url = f"{self.base_url}/api/error-logs/"
         try:
             resp = requests.post(url, json=payload, headers=self._headers(), timeout=5.0)
         except requests.RequestException as exc:
@@ -815,4 +815,4 @@ class ApiClient:
         if resp.status_code in (200, 201):
             return resp.json()
 
-        raise RuntimeError(f"Error creating run event: {resp.status_code} {resp.text}")
+        raise RuntimeError(f"Error creating error log: {resp.status_code} {resp.text}")

@@ -19,6 +19,7 @@ from app.api_client import ApiClient
 from app.esp_controller import EspController
 from app.steps_tab import BACKEND_MEDIA_ROOT
 
+WRONG_GATE_ERROR_TYPE_ID = 1
 
 # ---------- Full-screen projection window ----------
 
@@ -256,17 +257,15 @@ class StepRunWindow(QWidget):
         else:
             self._log_wrong_gate(section)
 
+
     def _log_wrong_gate(self, section: int):
         print(f"Wrong gate triggered: {section}")
 
         try:
-            self.api_client.create_run_event({
-                "assembly_execution": self.current_execution_id,
+            self.api_client.create_error_log({
                 "step_execution": self.current_step_execution_id,
-                "step": self.steps[self.current_step_index]["id"],
-                "event_type": "wrong_gate",
-                "triggered_section": section,
-                "expected_sections": sorted(self.expected_sections),
+                "error_type": WRONG_GATE_ERROR_TYPE_ID,
+                "notes": f"Triggered section {section}, expected {sorted(self.expected_sections)}",
             })
         except RuntimeError as exc:
             print(f"Failed to log wrong gate: {exc}")
