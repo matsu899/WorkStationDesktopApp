@@ -1,0 +1,5 @@
+{
+  "esp_port": "COM5",
+  "esp_baudrate": 115200,
+  "debug_run": false
+}

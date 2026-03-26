@@ -18,6 +18,7 @@ from PyQt6.QtCore import Qt
 from app.api_client import ApiClient
 from app.esp_controller import EspController
 from app.steps_tab import BACKEND_MEDIA_ROOT
+from app.config import load_app_config
 
 WRONG_GATE_ERROR_TYPE_ID = 1
 
@@ -40,7 +41,13 @@ class StepRunWindow(QWidget):
         self.finished: bool = False
 
         # NEW: ESP + run-state
-        self.esp = EspController(port_name="COM5")
+        self.config = load_app_config()
+        self.debug_run = self.config.get("debug_run", False)
+
+        self.esp = EspController(
+            port_name=self.config.get("esp_port", "COM5"),
+            baudrate=self.config.get("esp_baudrate", 115200),
+        )
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
@@ -50,6 +57,10 @@ class StepRunWindow(QWidget):
         self._connect_esp_signals()
         self._build_ui()
 
+    def _debug(self, *args):
+        if self.debug_run:
+            print(*args)
+
     def _connect_esp_signals(self):
         self.esp.gate_triggered.connect(self._handle_gate_trigger)
         self.esp.log_message.connect(self._on_esp_log)
@@ -57,13 +68,13 @@ class StepRunWindow(QWidget):
         self.esp.connected_changed.connect(self._on_esp_connected_changed)
 
     def _on_esp_log(self, msg: str):
-        print(f"[ESP] {msg}")
+        self._debug(f"[ESP] {msg}")
 
     def _on_esp_error(self, msg: str):
-        print(f"[ESP ERROR] {msg}")
+        self._debug(f"[ESP ERROR] {msg}")
 
     def _on_esp_connected_changed(self, connected: bool):
-        print(f"[ESP CONNECTED] {connected}")
+        self._debug(f"[ESP CONNECTED] {connected}")
 
 
 
@@ -180,7 +191,7 @@ class StepRunWindow(QWidget):
     def _prepare_step_guidance(self, step: Dict):
         self._load_organizer_mapping()
         self.expected_sections = self._resolve_expected_sections(step)
-        print("expected_sections =", sorted(self.expected_sections))
+        self._debug("expected_sections =", sorted(self.expected_sections))
         self._push_led_state()
 
     def _load_organizer_mapping(self):
@@ -204,7 +215,7 @@ class StepRunWindow(QWidget):
             if bin_id and position:
                 self.bin_to_section[int(bin_id)] = int(position)
 
-        print("bin_to_section =", self.bin_to_section)
+        self._debug("bin_to_section =", self.bin_to_section)
 
     def _resolve_expected_sections(self, step: Dict) -> Set[int]:
         sections: Set[int] = set()
@@ -225,14 +236,14 @@ class StepRunWindow(QWidget):
         return sections
 
     def _push_led_state(self):
-        print("push_led_state, connected=", self.esp.is_connected, "sections=", sorted(self.expected_sections))
+        self._debug("push_led_state, connected=", self.esp.is_connected, "sections=", sorted(self.expected_sections))
         if self.esp and self.esp.is_connected:
             self.esp.set_sections_by_numbers(sorted(self.expected_sections))
         else:
             print("ESP not connected, LED state not sent")
 
     def _handle_gate_trigger(self, section: int):
-        print(f"Triggered section: {section}")
+        self._debug(f"Triggered section: {section}")
 
         if self.finished:
             return
@@ -244,16 +255,8 @@ class StepRunWindow(QWidget):
             self.expected_sections.discard(section)
             self._push_led_state()
 
-            # if step is done, auto-finish it and advance
-            if not self.expected_sections:
-                self._complete_current_step()
-
-                if self.current_step_index + 1 < len(self.steps):
-                    self.current_step_index += 1
-                    self._start_step(self.current_step_index)
-                else:
-                    self._complete_assembly()
-                    self._show_finish_screen()
+            # do NOT auto-finish step here
+            # user must confirm next step manually
         else:
             self._log_wrong_gate(section)
 
@@ -399,7 +402,6 @@ class StepRunWindow(QWidget):
 
         # ESC = exit
         if key == Qt.Key.Key_Escape:
-            
             self.close()
             return
 
@@ -413,6 +415,11 @@ class StepRunWindow(QWidget):
         if key == Qt.Key.Key_Space:
             if self.finished:
                 # space ignored on final screen
+                return
+
+            # only allow advance when all expected gates were triggered
+            if self.expected_sections:
+                print(f"Cannot advance, still waiting for sections: {sorted(self.expected_sections)}")
                 return
 
             # complete current step
