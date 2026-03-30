@@ -39,7 +39,7 @@ class StepRunWindow(QWidget):
         self.finished: bool = False
 
         # NEW: ESP + run-state
-        self.esp = EspController(port_name="COM5")
+        self.esp = EspController(port_name="COM4")
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
