@@ -3,17 +3,18 @@
 # Umožňuje zobrazení kroků montáže v režimu projektoru na celou obrazovku
 # Sleduje průběh jednotlivých kroků a zaznamenává časy spuštění/dokončení
 
-from time import time
+import time
 from typing import List, Dict, Optional, Set
 import os
+from unittest import result
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox, QLabel,
     QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
-    QGraphicsTextItem, QGraphicsRectItem, QFrame,
+    QGraphicsTextItem, QGraphicsRectItem, QFrame, QDialog
 )
 from PyQt6.QtGui import QFont, QBrush, QColor, QPixmap, QPen
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from app.api_client import ApiClient
 from app.esp_controller import EspController
@@ -25,6 +26,7 @@ WRONG_GATE_ERROR_TYPE_ID = 1
 # ---------- Full-screen projection window ----------
 
 class StepRunWindow(QWidget):
+    runFinished = pyqtSignal()
     def __init__(self, api_client: ApiClient, assembly_detail: dict, parent=None):
         super().__init__(parent)
         self.api_client = api_client
@@ -432,13 +434,47 @@ class StepRunWindow(QWidget):
             else:
                 # complete assembly and show finish
                 self._complete_assembly()
-                self._show_finish_screen()
+                self.finished = True
+                self.runFinished.emit()
+                self.close()
 
             return
 
         # default
         super().keyPressEvent(event)
 
+
+class FinishDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Assembly completed")
+        self.setModal(True)
+        self.setMinimumSize(500, 220)
+
+        layout = QVBoxLayout(self)
+
+        label = QLabel(
+            "Assembly completed.\n\n"
+            "ENTER = start next product\n"
+            "ESC = end run"
+        )
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        label.setFont(font)
+
+        layout.addWidget(label)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.accept()
+            return
+        if key == Qt.Key.Key_Escape:
+            self.reject()
+            return
+        super().keyPressEvent(event)
 
 # ---------- Run program tab ----------
 
@@ -520,4 +556,12 @@ class RunProgramTab(QWidget):
 
         run_window = StepRunWindow(self.api_client, detail, parent=self)
         self._current_run_window = run_window
+        run_window.runFinished.connect(self._run_finished_flow)
         run_window.showFullScreen()
+
+    def _run_finished_flow(self):
+        dlg = FinishDialog(self)
+        result = dlg.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            self._start_run()
