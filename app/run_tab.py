@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
     QGraphicsTextItem, QGraphicsRectItem, QFrame, QDialog
 )
-from PyQt6.QtGui import QFont, QBrush, QColor, QPixmap, QPen
+from PyQt6.QtGui import QFont, QBrush, QColor, QPixmap, QPen, QGuiApplication
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from app.api_client import ApiClient
@@ -90,6 +90,21 @@ class StepRunWindow(QWidget):
             super().closeEvent(event)
 
     # ---------- UI ----------
+    def _move_to_projector(self):
+        screens = QGuiApplication.screens()
+        print("Qt screens:", [s.geometry().getRect() for s in screens])
+
+        if len(screens) < 2:
+            print("Projector screen not found, using primary screen.")
+            return
+
+        projector = screens[1]  # second monitor
+        self.setGeometry(projector.geometry())
+
+        handle = self.windowHandle()
+        if handle is not None:
+            handle.setScreen(projector)
+
 
     def _build_ui(self):
         # Frameless, projector-like window
@@ -131,6 +146,9 @@ class StepRunWindow(QWidget):
     
     def showEvent(self, event):
         super().showEvent(event)
+
+        self._move_to_projector()
+        self.showFullScreen()
         self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
         if not self.esp.is_connected:
@@ -554,7 +572,7 @@ class RunProgramTab(QWidget):
             QMessageBox.information(self, "No steps", "This assembly has no steps defined.")
             return
 
-        run_window = StepRunWindow(self.api_client, detail, parent=self)
+        run_window = StepRunWindow(self.api_client, detail, parent=None)
         self._current_run_window = run_window
         run_window.runFinished.connect(self._run_finished_flow)
         run_window.showFullScreen()
