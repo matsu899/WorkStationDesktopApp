@@ -43,13 +43,13 @@ BACKEND_MEDIA_ROOT = r"C:\Projects\Diplomka\WorkStationBackend\media"
 STEP_OBJECTS_SUBDIR = "step_objects"
 
 
-# ---------- Custom scene to handle clicks for adding objects ----------
+# ---------- Vlastní scéna pro obsluhu kliknutí na přidávání objektů ----------
 
 class StepScene(QGraphicsScene):
     # Vlastní scéna pro kreslení kroků montáže
     # Umožňuje zachycování kliknutí na plátno pro přidávání nových objektů
     # Emituje signál s normalizovanými souřadnicemi (0..1) místa kliknutí
-    canvasClicked = pyqtSignal(float, float)  # normalized x, y in [0..1]
+    canvasClicked = pyqtSignal(float, float)  # normalizovaný x, y v [0..1]
 
     def __init__(self, width: int = 800, height: int = 600, parent=None):
         super().__init__(parent)
@@ -57,7 +57,7 @@ class StepScene(QGraphicsScene):
 
     def mousePressEvent(self, event):
         pos = event.scenePos()
-        # normalize to 0..1
+        # normalizace na 0..1
         w = self.width() or 1.0
         h = self.height() or 1.0
         x_norm = pos.x() / w
@@ -66,7 +66,7 @@ class StepScene(QGraphicsScene):
         super().mousePressEvent(event)
 
 
-# ---------- Small dialogs ----------
+# ---------- Malé dialogy ----------
 
 class StepDialog(QDialog):
     """Dialog pro přidávání nebo úpravu kroku montáže (AssemblyStep)."""
@@ -115,7 +115,7 @@ class StepDialog(QDialog):
 
 
 class TextObjectDialog(QDialog):
-    """Dialog to create/edit a text StepObject."""
+    """Dialog pro vytvoření/úpravu textového StepObject."""
 
     def __init__(self, parent=None, initial_text: str = ""):
         super().__init__(parent)
@@ -143,7 +143,7 @@ class TextObjectDialog(QDialog):
 
 
 class RequiredComponentDialog(QDialog):
-    """Dialog for adding/editing StepRequiredComponent."""
+    """Dialog pro přidávání/úpravu StepRequiredComponent."""
 
     def __init__(
         self,
@@ -185,7 +185,7 @@ class RequiredComponentDialog(QDialog):
             self.combo_bin.addItem(label, b.get("id"))
 
         if initial_data:
-            # preselect component
+            # předvolba komponenty
             comp_id = initial_data.get("component_id")
             preferred_bins = initial_data.get("preferred_bins") or []
             bin_id = preferred_bins[0].get("id") if preferred_bins else None
@@ -229,13 +229,13 @@ class RequiredComponentDialog(QDialog):
 
 
 class ResizableRectItem(QGraphicsRectItem):
-    HANDLE_SIZE = 30.0  # bigger = easier to grab
+    HANDLE_SIZE = 30.0  # větší = snadnější uchopit
 
     def __init__(self, x, y, w, h, *args, **kwargs):
-        # rect is in LOCAL coordinates (0,0,w,h)
+        # rect je v LOCAL souřadnicích (0,0,w,h)
         super().__init__(0, 0, w, h, *args, **kwargs)
 
-        # position is in SCENE coordinates
+        # pozice je v SCENE souřadnicích
         self.setPos(x, y)
 
         self._resizing = False
@@ -248,7 +248,7 @@ class ResizableRectItem(QGraphicsRectItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
     def _clamp_to_scene(self):
-        """Clamp the item to stay within scene bounds."""
+        """Uchování prvku v mezích scény."""
         scene_rect = self.scene().sceneRect() if self.scene() else None
         if not scene_rect:
             return
@@ -256,7 +256,7 @@ class ResizableRectItem(QGraphicsRectItem):
         pos = self.pos()
         r = self.rect()
         
-        # Clamp position
+        # Omezení pozice
         new_x = max(0, min(pos.x(), scene_rect.width() - r.width()))
         new_y = max(0, min(pos.y(), scene_rect.height() - r.height()))
         
@@ -264,8 +264,8 @@ class ResizableRectItem(QGraphicsRectItem):
             self.setPos(new_x, new_y)
 
     def _recenter_text_children(self):
-        """Recenter all text children in the rect."""
-        r = self.rect()  # local rect (0..w, 0..h)
+        """Recentrování všech textových prvků v obdélníku."""
+        r = self.rect()  # lokální rect (0..w, 0..h)
         for child in self.childItems():
             if isinstance(child, QGraphicsTextItem):
                 padding = 8
@@ -305,7 +305,7 @@ class ResizableRectItem(QGraphicsRectItem):
             new_rect = QRectF(self._original_rect.topLeft(), QSizeF(new_w, new_h))
             self.setRect(new_rect)
 
-            # recenter text children
+            # recentrování textových prvků
             self._recenter_text_children()
 
             self.update()
@@ -355,7 +355,7 @@ class ResizablePixmapItem(QGraphicsPixmapItem):
         self._original_rect = self.boundingRect()
         self.setAcceptHoverEvents(True)
 
-        # allow moving/selecting
+        # povolení přesunu/výběru
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
@@ -377,8 +377,8 @@ class ResizablePixmapItem(QGraphicsPixmapItem):
 
     
     def shape(self):
-        """Override shape to use bounding rect instead of pixmap alpha channel.
-        This allows clicking on transparent areas of PNG images."""
+        """Přepsání tvaru pro použití bounding rect místo alfa kanálu obrázku.
+        Umožňuje klikání na průhledné oblasti PNG obrázků."""
         path = QPainterPath()
         path.addRect(self.boundingRect())
         return path
@@ -403,7 +403,7 @@ class ResizablePixmapItem(QGraphicsPixmapItem):
             new_w = max(40.0, self._original_rect.width() + delta.x())
             new_h = max(40.0, self._original_rect.height() + delta.y())
 
-            # Clamp to scene bounds
+            # Omezení na hranice scény
             scene_rect = self.scene().sceneRect() if self.scene() else None
             if scene_rect is not None:
                 pos = self.pos()
@@ -456,14 +456,14 @@ class ResizablePixmapItem(QGraphicsPixmapItem):
 
 
 
-# ---------- Main Step Editor Tab ----------
+# ---------- Hlavní záložka editoru kroků ----------
 
 class StepsTab(QWidget):
     """
-    Step editor:
-    LEFT  = assembly + steps list
-    CENTER = canvas (StepObjects)
-    RIGHT = required components for selected step
+    Editor kroků:
+    VLEVO  = montáž + seznam kroků
+    STŘED = plátno (StepObjects)
+    VPRAVO = požadované komponenty pro vybraný krok
     """
 
     def __init__(self, api_client: ApiClient, parent=None):
@@ -472,14 +472,14 @@ class StepsTab(QWidget):
 
         self.assembly_types: List[Dict] = []
         self.current_assembly_detail: Optional[Dict] = None
-        self.current_step: Optional[Dict] = None  # Selected step dict
+        self.current_step: Optional[Dict] = None  # Slovník vybraného kroku
 
-        self._pending_add_mode: Optional[str] = None  # "text" or "image"
+        self._pending_add_mode: Optional[str] = None  # "text" nebo "image"
 
         self._build_ui()
         self._load_assemblies()
 
-    # ---------- UI build ----------
+    # ---------- Stavba UI ----------
 
     def _build_ui(self):
         main_layout = QHBoxLayout(self)
@@ -520,7 +520,7 @@ class StepsTab(QWidget):
         left_panel.addWidget(self.table_steps)
         left_panel.addLayout(step_btn_row)
 
-        # CENTER: canvas toolbar + graphics view
+        # STŘED: nástrojová lišta plátna + grafický pohled
         center_panel = QVBoxLayout()
         canvas_toolbar = QHBoxLayout()
         self.btn_add_text_obj = QPushButton("Add text")
@@ -542,15 +542,15 @@ class StepsTab(QWidget):
         canvas_toolbar.addWidget(self.btn_save_layout)
         canvas_toolbar.addStretch()
 
-        # One 16:9 scene, with explicit canvas rect
+        # Jedna scéna 16:9 s explicitním canvas rect
         self.scene = StepScene(1600, 900)
         self.scene.setSceneRect(0, 0, 1600, 900)
         self.scene.setBackgroundBrush(Qt.GlobalColor.transparent)
 
-        # Black 16:9 canvas *inside* the scene
+        # Černý 16:9 plátno *uvnitř* scény
         self.canvas_rect = QGraphicsRectItem(self.scene.sceneRect())
-        self.canvas_rect.setBrush(QBrush(QColor(0, 0, 0)))      # black fill
-        self.canvas_rect.setPen(QPen(Qt.PenStyle.NoPen))        # no border
+        self.canvas_rect.setBrush(QBrush(QColor(0, 0, 0)))      # černá výplň
+        self.canvas_rect.setPen(QPen(Qt.PenStyle.NoPen))        # bez okraje
         self.canvas_rect.setZValue(-1000)
         self.scene.addItem(self.canvas_rect)
 
@@ -569,7 +569,7 @@ class StepsTab(QWidget):
         center_panel.addWidget(self.view)
 
 
-        # transparent background, no frame/border
+        # transparentní pozadí, bez rámce/okraje
         self.view.setBackgroundBrush(Qt.GlobalColor.transparent)
         self.view.setFrameShape(QFrame.Shape.NoFrame)
         self.view.setLineWidth(0)
@@ -593,7 +593,7 @@ class StepsTab(QWidget):
         center_panel.addLayout(canvas_toolbar)
         center_panel.addWidget(self.view)
 
-        # RIGHT: required components
+        # VPRAVO: požadované komponenty
         right_panel = QVBoxLayout()
 
         rc_group = QGroupBox("Required components for step")
@@ -631,7 +631,7 @@ class StepsTab(QWidget):
         main_layout.addLayout(center_panel, 6)
         main_layout.addLayout(right_panel, 2)
 
-    # ---------- Assembly / steps loading ----------
+    # ---------- Načítání montáže / kroků ----------
 
     def _load_assemblies(self):
         try:
@@ -773,7 +773,7 @@ class StepsTab(QWidget):
             QMessageBox.critical(self, "Error", str(exc))
             return
 
-        # reload assembly detail
+        # přenačtení detailu montáže
         self._on_assembly_changed(self.combo_assembly.currentIndex())
 
     def edit_selected_step(self):
@@ -849,17 +849,17 @@ class StepsTab(QWidget):
 
         self._on_assembly_changed(self.combo_assembly.currentIndex())
 
-    # ---------- Load a step into the center + right ----------
+    # ---------- Načtení kroku do středu + vpravo ----------
 
     def _load_step_into_editor(self, step: Dict):
-        """Load a step's objects + required components into canvas & right panel."""
+        """Načtení objektů kroku + požadovaných komponent na plátno a pravý panel."""
         self._draw_step_objects(step)
         self._populate_required_components(step.get("required_components", []))
 
-    # ---------- Canvas (StepObjects) ----------
+    # ---------- Plátno (StepObjects) ----------
 
     def _clear_canvas(self):
-        """Remove all items except the black canvas."""
+        """Odebrání všech prvků kromě černého plátna."""
         for item in list(self.scene.items()):
             if item is self.canvas_rect:
                 continue
@@ -949,7 +949,7 @@ class StepsTab(QWidget):
                     self.scene.addItem(rect)
 
 
-        # (later we can enable selection/dragging of items here)
+        # (později můžeme povolit výběr/přetahování položek zde)
 
     def _start_add_text_object(self):
         if not self.current_step:
@@ -982,23 +982,23 @@ class StepsTab(QWidget):
             
             font_size = self.spin_font_size.value()
             
-            # Create a temporary text item to measure its size
+            # Vytvoření dočasné textové položky pro měření její velikosti
             temp_text = QGraphicsTextItem(text)
             font = QFont()
             font.setPixelSize(font_size)
             temp_text.setFont(font)
             
-            # Measure the text
+            # Měření textu
             br = temp_text.boundingRect()
             text_width = br.width()
             text_height = br.height()
             
-            # Add padding around the text (8px on each side = 16px total)
+            # Přidání odsazení kolem textu (8px na každou stranu = 16px celkem)
             padding = 8.0
             box_width_px = text_width + (padding * 2)
             box_height_px = text_height + (padding * 2)
             
-            # Convert to normalized coordinates
+            # Převod na normalizované souřadnice
             w = self.scene.width()
             h = self.scene.height()
             width = box_width_px / w if w > 0 else 0.1
@@ -1033,7 +1033,7 @@ class StepsTab(QWidget):
             if not file_path:
                 return
 
-            # copy image into media/step_objects
+            # kopírování obrázku do media/step_objects
             dest_dir = os.path.join(BACKEND_MEDIA_ROOT, STEP_OBJECTS_SUBDIR)
             os.makedirs(dest_dir, exist_ok=True)
 
@@ -1066,11 +1066,11 @@ class StepsTab(QWidget):
                 QMessageBox.critical(self, "Error", str(exc))
                 return
 
-        # reload step from server (via assembly detail)
+        # přenačtení kroku ze serveru (přes detail montáže)
         self._reload_current_step_from_server()
 
     def _delete_selected_object(self):
-        # we look for a selected item with our tag
+        # Hledáme vybranou položku s naší značkou
         for item in self.scene.selectedItems():
             tag = item.data(0)
             if isinstance(tag, tuple) and tag[0] == "step_object":
@@ -1084,7 +1084,7 @@ class StepsTab(QWidget):
                 return
 
     def _reload_current_step_from_server(self):
-        """After adding/removing objects, reload assembly detail and refresh this step."""
+        """Po přidání/odebrání objektů přenačteme detail montáže a obnovíme tento krok."""
         if not self.current_assembly_detail:
             return
 
@@ -1112,7 +1112,7 @@ class StepsTab(QWidget):
         self._populate_steps_table(steps)
 
         if new_step:
-            # select row of this step
+            # výběr řádku tohoto kroku
             for i, s in enumerate(steps):
                 if s.get("id") == step_id:
                     self.table_steps.selectRow(i)
@@ -1124,7 +1124,7 @@ class StepsTab(QWidget):
             self._clear_canvas()
             self._populate_required_components([])
 
-    # ---------- Required components (right panel) ----------
+    # ---------- Požadované komponenty (pravý panel) ----------
 
     def _populate_required_components(self, required: List[Dict]):
         self.table_required.setRowCount(0)
@@ -1295,7 +1295,7 @@ class StepsTab(QWidget):
         self._reload_current_step_from_server()
 
     def _get_selected_step_object_item(self):
-        """Return the selected QGraphicsItem that represents a step_object, or None."""
+        """Vrátí vybraný QGraphicsItem, který reprezentuje step_object, nebo None."""
         for item in self.scene.selectedItems():
             tag = item.data(0)
             if isinstance(tag, tuple) and tag[0] == "step_object":
@@ -1303,12 +1303,12 @@ class StepsTab(QWidget):
         return None
 
     def _on_font_size_changed(self, size: int):
-        """Update font size for selected text object."""
+        """Aktualizace velikosti písma pro vybraný textový objekt."""
         item = self._get_selected_step_object_item()
         if not item:
-            return  # silently ignore if nothing selected
+            return  # tiché ignorování, pokud není nic vybráno
         
-        # Only works on ResizableRectItem with text children
+        # Funguje pouze na ResizableRectItem s textovými potomky
         if not isinstance(item, ResizableRectItem):
             return
         
@@ -1317,12 +1317,12 @@ class StepsTab(QWidget):
                 font = child.font()
                 font.setPixelSize(size)
                 child.setFont(font)
-                # Recenter text after font change
+                # Recentrování textu po změně písma
                 item._recenter_text_children()
                 self.scene.update()
                 break
 
-        # Update in-memory object so it gets saved
+        # Aktualizace objektu v paměti, aby se uložil
         tag = item.data(0)
         obj_id = tag[1] if isinstance(tag, tuple) else None
         if obj_id is None or not self.current_step:
@@ -1336,8 +1336,8 @@ class StepsTab(QWidget):
 
     def _scale_selected_object(self, factor: float):
         """
-        Grow/shrink selected object by multiplying its width/height (normalized)
-        by factor. This only changes local data and redraws the step.
+        Zvětšení/zmenšení vybraného objektu vynásobením jeho šířky/výšky (normalizované)
+        faktorem. To pouze změní lokální data a překreslí krok.
         """
         if not self.current_step:
             QMessageBox.information(self, "No step", "Select a step first.")
@@ -1351,7 +1351,7 @@ class StepsTab(QWidget):
         tag = item.data(0)
         obj_id = tag[1]
 
-        # Find object in current_step data
+        # Vyhledání objektu v datech aktuálního kroku
         objs = self.current_step.get("step_objects", [])
         obj = None
         for o in objs:
@@ -1361,24 +1361,24 @@ class StepsTab(QWidget):
         if not obj:
             return
 
-        # Adjust normalized width/height
+        # Úprava normalizované šířky/výšky
         width = float(obj.get("width", 0.2)) * factor
         height = float(obj.get("height", 0.1)) * factor
 
-        # Clamp to avoid crazy values
+        # Omezení, aby se zabránilo divným hodnotám
         width = max(0.05, min(width, 2.0))
         height = max(0.05, min(height, 2.0))
 
         obj["width"] = width
         obj["height"] = height
 
-        # Just redraw from current_step, no API call yet
+        # Jen překreslit z aktuálního_kroku, zatím bez volání API
         self._draw_step_objects(self.current_step)
 
     def _save_layout_changes(self):
         """
-        Go through all step_objects of current_step, read their geometry
-        from the scene (pos + size), and update them via API.
+        Projděte všechny step_objects aktuálního_kroku, přečtěte si jejich geometrii
+        ze scény (pos + velikost) a aktualizujte je přes API.
         """
         if not self.current_step:
             QMessageBox.information(self, "No step", "Select a step first.")
@@ -1394,7 +1394,7 @@ class StepsTab(QWidget):
         w = scene_rect.width() or 1.0
         h = scene_rect.height() or 1.0
 
-        # Map id -> backend object data
+        # Mapování id -> data objektu v backendu
         objs_by_id = {o["id"]: o for o in objs if "id" in o}
 
         try:
@@ -1408,12 +1408,12 @@ class StepsTab(QWidget):
                 if not obj:
                     continue
 
-                # position in scene coordinates
+                # pozice v souřadnicích scény
                 pos = item.pos()
                 x_px = pos.x()
                 y_px = pos.y()
 
-                # size in scene coordinates (local bounding rect)
+                # velikost v souřadnicích scény (lokální bounding rect)
                 br = item.boundingRect()
                 width_px = br.width()
                 height_px = br.height()
@@ -1430,7 +1430,7 @@ class StepsTab(QWidget):
                 image_path = obj.get("image_path", "")
                 font_size = int(obj.get("font_size", 10))
 
-                # Update via API with new geometry
+                # Aktualizace přes API s novou geometrií
                 self.api_client.update_step_object(
                     obj_id=obj_id,
                     step_id=step_id,
@@ -1449,7 +1449,7 @@ class StepsTab(QWidget):
             QMessageBox.critical(self, "Error", f"Error saving layout:\n{exc}")
             return
 
-        # Reload from server so local data matches DB
+        # Přenačtení ze serveru, aby se lokální data shodovala s DB
         self._reload_current_step_from_server()
         QMessageBox.information(self, "Saved", "Step layout saved.")
 

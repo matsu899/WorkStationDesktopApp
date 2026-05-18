@@ -5,6 +5,9 @@ DEFAULT_CONFIG = {
     "esp_port": "COM5",
     "esp_baudrate": 115200,
     "debug_run": False,
+
+    "backend_url": "http://127.0.0.1:8000",
+    "grafana_url": "http://127.0.0.1:3000",
 }
 
 def load_app_config() -> dict:

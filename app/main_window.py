@@ -17,6 +17,10 @@ from app.assemblies_tab import AssembliesTab
 from app.bins_tab import BinsTab
 from app.steps_tab import StepsTab
 from app.run_tab import RunProgramTab
+from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtCore import QUrl
+from app.config import load_app_config
 
 class MainWindow(QMainWindow):
     """
@@ -45,15 +49,27 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
 
+        config = load_app_config()
         
-        def make_placeholder_tab(title: str) -> QWidget:
+        def make_link_tab(title: str, button_text: str, url: str) -> QWidget:
             page = QWidget()
             layout = QVBoxLayout(page)
-            label = QLabel(f"{title} – not implemented yet")
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            label = QLabel(title)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            button = QPushButton(button_text)
+            button.setMinimumWidth(250)
+            button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+
             layout.addWidget(label)
+            layout.addWidget(button)
+
             self.tabs.addTab(page, title)
             return page
+
+        self.last_normal_tab = 0
 
         # Components tab
         self.tab_components = ComponentsTab(self.api_client)
@@ -76,10 +92,10 @@ class MainWindow(QMainWindow):
         self.tab_run = RunProgramTab(self.api_client)
         self.tabs.addTab(self.tab_run, "Run program")
 
+        self.users_tab_index = self.tabs.addTab(QWidget(), "Users")
+        self.stats_tab_index = self.tabs.addTab(QWidget(), "Statistics")
 
-        # Placeholder tabs
-        self.tab_users = make_placeholder_tab("Users")
-        self.tab_stats = make_placeholder_tab("Statistics")
+        self.tabs.currentChanged.connect(self._handle_special_tabs)
 
         # --- Toolbar with Logout ---
         toolbar = QToolBar("Main")
@@ -102,3 +118,21 @@ class MainWindow(QMainWindow):
             # Clear token so API calls fail until next login
             self.api_client.token = None
             self.on_logout()
+
+    def _handle_special_tabs(self, index: int):
+        config = load_app_config()
+
+        if index == self.users_tab_index:
+            QDesktopServices.openUrl(
+                QUrl(f"{config['backend_url']}/admin/")
+            )
+            self.tabs.setCurrentIndex(self.last_normal_tab)
+
+        elif index == self.stats_tab_index:
+            QDesktopServices.openUrl(
+                QUrl(config["grafana_url"])
+            )
+            self.tabs.setCurrentIndex(self.last_normal_tab)
+
+        else:
+            self.last_normal_tab = index

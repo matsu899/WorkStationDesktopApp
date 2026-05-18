@@ -1,7 +1,0 @@
-Generování qr kodů/ data matic
-Při určování toho jaké komponenty jsou přiřazeny ke stepu by měl stačit komponent ne bin (více binů se stejnými komponenty, jedno který zvolím)
-Možnost přidábání a editace uživatelů
-Zobrazení krokových časů při montáži
-Pozadí při vytváření kroků by mělo odpovídat obrazu z kamery nad stolem
-Přidání nastavení
-Pokud najedu miší na obrázek sestavy/componenty obrázek se zobrazí větší

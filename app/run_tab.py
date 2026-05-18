@@ -23,7 +23,7 @@ from app.config import load_app_config
 
 WRONG_GATE_ERROR_TYPE_ID = 1
 
-# ---------- Full-screen projection window ----------
+# ---------- Okno celoobrazovkové projekce ----------
 
 class StepRunWindow(QWidget):
     runFinished = pyqtSignal()
@@ -42,7 +42,7 @@ class StepRunWindow(QWidget):
         self.current_step_index: int = 0
         self.finished: bool = False
 
-        # NEW: ESP + run-state
+        # NOVÉ: ESP + stav běhu
         self.config = load_app_config()
         self.debug_run = self.config.get("debug_run", False)
 
@@ -53,7 +53,7 @@ class StepRunWindow(QWidget):
         self.expected_sections: Set[int] = set()
         self.triggered_sections: Set[int] = set()
 
-        # organizer mapping
+        # mapování organizéru
         self.bin_to_section = {}
 
         self._connect_esp_signals()
@@ -98,7 +98,7 @@ class StepRunWindow(QWidget):
             print("Projector screen not found, using primary screen.")
             return
 
-        projector = screens[1]  # second monitor
+        projector = screens[1]  # druhý monitor
         self.setGeometry(projector.geometry())
 
         handle = self.windowHandle()
@@ -107,40 +107,40 @@ class StepRunWindow(QWidget):
 
 
     def _build_ui(self):
-        # Frameless, projector-like window
+        # Bez rámečku, okno podobné projektoru
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.Window
         )
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-        # 16:9 scene
+        # Scéna 16:9
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 1600, 900)
         self.scene.setBackgroundBrush(Qt.GlobalColor.transparent)
 
-        # Black canvas rectangle (the projected area)
+        # Černý obdélník plátna (promítaná plocha)
         self.canvas_rect = QGraphicsRectItem(self.scene.sceneRect())
-        self.canvas_rect.setBrush(QBrush(QColor(0, 0, 0)))   # black
+        self.canvas_rect.setBrush(QBrush(QColor(0, 0, 0)))   # černá
         self.canvas_rect.setPen(QPen(Qt.PenStyle.NoPen))
         self.canvas_rect.setZValue(-1000)
         self.scene.addItem(self.canvas_rect)
 
-        # Graphics view
+        # Grafický pohled
         self.view = QGraphicsView(self.scene, self)
         self.view.setFrameShape(QFrame.Shape.NoFrame)
         self.view.setLineWidth(0)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # No extra background, just black canvas in the middle
+        # Žádné extra pozadí, jen černé plátno uprostřed
         self.view.setStyleSheet("")  
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
 
-        # Optional: hide cursor for projector view
+        # Volitelně: skrytí kurzoru pro pohled projektoru
         self.setCursor(Qt.CursorShape.BlankCursor)
 
     
@@ -160,10 +160,10 @@ class StepRunWindow(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Keep whole 16:9 canvas visible
+        # Udržení viditelnosti celého plátna 16:9
         self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
-    # ---------- Execution control ----------
+    # ---------- Řízení provádění ----------
 
     def _start_new_execution(self):
         if not self.steps:
@@ -271,12 +271,12 @@ class StepRunWindow(QWidget):
         if section in self.expected_sections:
             self.triggered_sections.add(section)
 
-            # remove picked section from active list
+            # odebrání vyzvednuté sekce z aktivního seznamu
             self.expected_sections.discard(section)
             self._push_led_state()
 
-            # do NOT auto-finish step here
-            # user must confirm next step manually
+            # NEKONČIT automaticky krok zde
+            # uživatel musí potvrdit další krok ručně
         else:
             self._log_wrong_gate(section)
 
@@ -313,17 +313,17 @@ class StepRunWindow(QWidget):
             return
         self.finished = True
 
-    # ---------- Rendering ----------
+    # ---------- Vykreslování ----------
 
     def _clear_canvas(self):
-        """Remove all items except the black canvas rect."""
+        """Odebrání všech prvků kromě černého obdélníku plátna."""
         for item in list(self.scene.items()):
             if item is self.canvas_rect:
                 continue
             self.scene.removeItem(item)
 
     def _show_step(self, step: Dict):
-        """Draw only step_objects for the given step."""
+        """Kreslení pouze step_objects pro daný krok."""
         self._clear_canvas()
 
         scene_rect = self.scene.sceneRect()
@@ -384,7 +384,7 @@ class StepRunWindow(QWidget):
                         item.setZValue(z)
                         self.scene.addItem(item)
                 else:
-                    # Fallback: gray box if image missing
+                    # Náhrada: šedý box, pokud chybí obrázek
                     rect = QGraphicsRectItem(x, y, width_px, height_px)
                     rect.setBrush(QBrush(QColor(80, 80, 80)))
                     rect.setPen(QPen(Qt.GlobalColor.white))
@@ -392,7 +392,7 @@ class StepRunWindow(QWidget):
                     self.scene.addItem(rect)
 
     def _show_finish_screen(self):
-        """Show final minimal screen after last step."""
+        """Zobrazení finální minimální obrazovky po posledním kroku."""
         self._clear_canvas()
 
         scene_rect = self.scene.sceneRect()
@@ -415,42 +415,42 @@ class StepRunWindow(QWidget):
         text.setZValue(10)
         self.scene.addItem(text)
 
-    # ---------- Keyboard ----------
+    # ---------- Klávesnice ----------
 
     def keyPressEvent(self, event):
         key = event.key()
 
-        # ESC = exit
+        # ESC = výstup
         if key == Qt.Key.Key_Escape:
             self.close()
             return
 
-        # ENTER on final screen = new execution (same assembly)
+        # ENTER na finální obrazovce = nové provádění (stejná montáž)
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if self.finished:
                 self._start_new_execution()
             return
 
-        # SPACE = next step / finish assembly
+        # SPACE = další krok / dokončení montáže
         if key == Qt.Key.Key_Space:
             if self.finished:
-                # space ignored on final screen
+                # space ignorován na finální obrazovce
                 return
 
-            # only allow advance when all expected gates were triggered
+            # pouze povoluje pokročení, když byly spuštěny všechny očekávané brány
             if self.expected_sections:
                 print(f"Cannot advance, still waiting for sections: {sorted(self.expected_sections)}")
                 return
 
-            # complete current step
+            # dokončení aktuálního kroku
             self._complete_current_step()
 
-            # next step?
+            # další krok?
             if self.current_step_index + 1 < len(self.steps):
                 self.current_step_index += 1
                 self._start_step(self.current_step_index)
             else:
-                # complete assembly and show finish
+                # dokončení montáže a zobrazení finále
                 self._complete_assembly()
                 self.finished = True
                 self.runFinished.emit()
@@ -458,7 +458,7 @@ class StepRunWindow(QWidget):
 
             return
 
-        # default
+        # výchozí
         super().keyPressEvent(event)
 
 
@@ -494,7 +494,7 @@ class FinishDialog(QDialog):
             return
         super().keyPressEvent(event)
 
-# ---------- Run program tab ----------
+# ---------- Záložka spuštění programu ----------
 
 class RunProgramTab(QWidget):
     def __init__(self, api_client: ApiClient, parent=None):
@@ -509,7 +509,7 @@ class RunProgramTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        # Operator instructions 
+        # Instrukce operátora
         help_label = QLabel(
             "Projection controls:\n"
             "• SPACE – next step\n"
@@ -519,7 +519,7 @@ class RunProgramTab(QWidget):
         help_label.setWordWrap(True)
         layout.addWidget(help_label)
 
-        # Assembly selection
+        # Výběr montáže
         row = QHBoxLayout()
         row.addWidget(QLabel("Assembly:"))
         self.combo_assembly = QComboBox()
@@ -561,7 +561,7 @@ class RunProgramTab(QWidget):
             QMessageBox.warning(self, "Error", "Invalid assembly selected.")
             return
 
-        # Load full assembly detail with steps + step_objects
+        # Načtení plného detailu montáže s kroky + step_objects
         try:
             detail = self.api_client.get_assembly_type_detail_full(asm_id)
         except RuntimeError as exc:
