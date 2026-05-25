@@ -41,7 +41,6 @@ class LoginWindow(QWidget):
         self.label_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # --- Inputs ---
-        self.input_server = QLineEdit(self.api_client.base_url)
         self.input_username = QLineEdit()
         self.input_password = QLineEdit()
 
@@ -50,7 +49,6 @@ class LoginWindow(QWidget):
         self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
 
         # Server label smaller / less prominent
-        label_server = QLabel("Server URL:")
         label_username = QLabel("Username:")
         label_password = QLabel("Password:")
 
@@ -60,7 +58,6 @@ class LoginWindow(QWidget):
         form_layout.setHorizontalSpacing(12)
         form_layout.setVerticalSpacing(10)
 
-        form_layout.addRow(label_server, self.input_server)
         form_layout.addRow(label_username, self.input_username)
         form_layout.addRow(label_password, self.input_password)
 
@@ -140,7 +137,6 @@ class LoginWindow(QWidget):
     def handle_login(self):
         username = self.input_username.text().strip()
         password = self.input_password.text().strip()
-        server_url = self.input_server.text().strip()
 
         if not self.button_login.isEnabled():
             return
@@ -148,9 +144,6 @@ class LoginWindow(QWidget):
         if not username or not password:
             QMessageBox.warning(self, "Missing data", "Please enter username and password.")
             return
-
-        if server_url and server_url != self.api_client.base_url:
-            self.api_client.base_url = server_url.rstrip("/")
 
         self.button_login.setEnabled(False)
         self.button_login.setText("Logging in...")

@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtCore import QUrl
 from app.config import load_app_config
+from PyQt6.QtGui import QIcon
 
 class MainWindow(QMainWindow):
     """
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow):
         self.on_logout = on_logout
 
         self.setWindowTitle("Workstation")
+        self.setWindowIcon(QIcon("assets/Workstation_logo.ico"))
         self.resize(1000, 700)
 
         self._build_ui()
@@ -48,27 +50,7 @@ class MainWindow(QMainWindow):
         # --- Tabs ---
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
-
-        config = load_app_config()
         
-        def make_link_tab(title: str, button_text: str, url: str) -> QWidget:
-            page = QWidget()
-            layout = QVBoxLayout(page)
-            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            label = QLabel(title)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            button = QPushButton(button_text)
-            button.setMinimumWidth(250)
-            button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
-
-            layout.addWidget(label)
-            layout.addWidget(button)
-
-            self.tabs.addTab(page, title)
-            return page
-
         self.last_normal_tab = 0
 
         # Components tab
